@@ -35,10 +35,20 @@ public class PlatformApiClient
             AgentKey = _options.AgentKey,
             CurrentRuns = currentRuns
         });
+
         response.EnsureSuccessStatusCode();
+
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        if (!doc.RootElement.TryGetProperty("commands", out var commands)) return new();
-        return commands.EnumerateArray().ToList();
+        if (!doc.RootElement.TryGetProperty("commands", out var commands) || commands.ValueKind != JsonValueKind.Array)
+            return new();
+
+        var result = new List<JsonElement>();
+        foreach (var item in commands.EnumerateArray())
+        {
+            result.Add(item.Clone());
+        }
+
+        return result;
     }
 
     public async Task<AgentPullResponse?> PullAsync()
