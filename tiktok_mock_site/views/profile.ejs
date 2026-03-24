@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok Mock Profile</title>
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body class="tt-profile-body">
+  <div class="tt-profile-shell">
+    <header class="tt-profile-header">
+      <a href="/feed" class="tt-profile-back">← 返回</a>
+    </header>
+
+    <section class="tt-profile-top">
+      <img class="tt-profile-avatar" src="<%= profileUser.avatar %>" alt="" />
+      <div class="tt-profile-main">
+        <h1 data-testid="tt-profile-name"><%= profileUser.displayName %></h1>
+        <div class="tt-profile-handle">@<%= profileUser.username %></div>
+        <div class="tt-profile-stats">
+          <span><strong><%= profileUser.following %></strong> 关注</span>
+          <span><strong><%= profileUser.followers %></strong> 粉丝</span>
+          <span><strong><%= profileUser.likesReceived %></strong> 获赞</span>
+        </div>
+        <p class="tt-profile-bio"><%= profileUser.bio %></p>
+      </div>
+    </section>
+
+    <section class="tt-profile-grid">
+      <% profileVideos.forEach((video) => { %>
+        <article class="tt-profile-video">
+          <img src="<%= video.coverImage %>" alt="" />
+          <div class="tt-profile-video-overlay">
+            <div>▶ <%= video.viewCountLabel %></div>
+          </div>
+        </article>
+      <% }) %>
+    </section>
+  </div>
+</body>
+</html>

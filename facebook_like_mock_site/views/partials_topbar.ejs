@@ -1,0 +1,13 @@
+<div class="topbar">
+  <div class="inner">
+    <div class="brand">facebook</div>
+    <input class="search" placeholder="Search Facebook-like app" />
+    <div class="nav-actions">
+      <a href="/feed">Feed</a>
+      <a href="/profile/<%= currentUser.username %>">My Profile</a>
+      <form method="POST" action="/logout" style="display:inline">
+        <button class="link-btn" type="submit">Logout</button>
+      </form>
+    </div>
+  </div>
+</div>

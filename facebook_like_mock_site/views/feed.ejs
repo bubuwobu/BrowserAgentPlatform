@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Feed</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <%- include('partials_topbar') %>
+  <div class="container" data-testid="feed-root">
+    <% posts.forEach(post => { %>
+      <article class="feed-post card" data-testid="feed-post">
+        <div class="post-header">
+          <div class="avatar"></div>
+          <div>
+            <div class="author">
+              <a href="/profile/<%= post.author.username %>"><%= post.author.displayName %></a>
+            </div>
+            <div class="small"><%= post.createdAt %> · Public</div>
+          </div>
+        </div>
+
+        <div class="post-content"><%= post.content %></div>
+        <img class="post-image" src="<%= post.image %>" alt="post-image" />
+
+        <div class="stats">
+          <div data-post-likes="<%= post.id %>"><%= post.likeCount %> likes</div>
+          <div><%= post.commentsDetailed.length %> comments</div>
+        </div>
+
+        <div class="actions">
+          <button
+            class="action-btn <%= post.likedByCurrentUser ? 'liked' : '' %>"
+            data-testid="post-like-button"
+            aria-pressed="<%= post.likedByCurrentUser ? 'true' : 'false' %>"
+            onclick="likePost(<%= post.id %>, this)">
+            <%= post.likedByCurrentUser ? 'Liked' : 'Like' %>
+          </button>
+          <button
+            class="action-btn"
+            data-testid="post-comment-toggle"
+            onclick="toggleComment(<%= post.id %>)">
+            Comment
+          </button>
+          <button class="action-btn">Share</button>
+        </div>
+
+        <div class="comments hidden" data-post-comments="<%= post.id %>">
+          <div data-post-comment-list="<%= post.id %>">
+            <% post.commentsDetailed.forEach(item => { %>
+              <div class="comment-item" data-testid="post-comment-item">
+                <div class="avatar" style="width:34px;height:34px"></div>
+                <div class="comment-bubble">
+                  <div><strong><%= item.user.displayName %></strong></div>
+                  <div><%= item.text %></div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+
+          <div style="margin-top:12px">
+            <textarea
+              class="comment-input"
+              data-testid="post-comment-input"
+              data-post-comment-input="<%= post.id %>"
+              placeholder="Write a comment..."></textarea>
+            <div class="form-row">
+              <button
+                class="comment-submit"
+                data-testid="post-comment-submit"
+                onclick="submitComment(<%= post.id %>)">
+                Post
+              </button>
+            </div>
+            <div class="notice hidden" data-post-notice="<%= post.id %>"></div>
+          </div>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "goal": "TikTok mock 站点完整自动化测试",
+  "site": "http://localhost:3001",
+  "mode": "generic",
+  "accountKey": "alice",
+  "browserProfileKey": "desktop-default",
+  "executionSpeed": "slow",
+  "payload": {
+    "goal": "TikTok mock 站点完整自动化测试",
+    "site": "http://localhost:3001",
+    "mode": "generic",
+    "executionSpeed": "slow",
+    "variables": {
+      "baseUrl": "http://localhost:3001",
+      "loginUrl": "http://localhost:3001/login",
+      "username": "alice",
+      "password": "123456",
+      "commentText": "这是一条针对 TikTok mock 站点的自动化测试评论。"
+    },
+    "steps": []
+  }
+}

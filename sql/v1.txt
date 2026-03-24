@@ -1,0 +1,201 @@
+CREATE DATABASE IF NOT EXISTS browser_agent_platform
+DEFAULT CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE browser_agent_platform;
+
+-- =========================
+-- users
+-- =========================
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '用户主键ID',
+    username VARCHAR(128) NOT NULL COMMENT '登录用户名，系统唯一',
+    password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希值',
+    display_name VARCHAR(128) NOT NULL DEFAULT '' COMMENT '显示名称',
+    role VARCHAR(32) NOT NULL DEFAULT 'admin' COMMENT '角色：admin / user',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_users_username (username)
+) COMMENT='系统用户表';
+
+-- =========================
+-- agents
+-- =========================
+CREATE TABLE IF NOT EXISTS agents (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Agent节点主键ID',
+    agent_key VARCHAR(128) NOT NULL COMMENT 'Agent唯一标识',
+    name VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'Agent名称',
+    machine_name VARCHAR(128) NOT NULL DEFAULT '' COMMENT '机器名称',
+    status VARCHAR(32) NOT NULL DEFAULT 'offline' COMMENT '状态：offline / online / busy',
+    max_parallel_runs INT NOT NULL DEFAULT 1 COMMENT '最大并发执行数',
+    current_runs INT NOT NULL DEFAULT 0 COMMENT '当前执行中的任务数',
+    scheduler_tags VARCHAR(255) NOT NULL DEFAULT '' COMMENT '调度标签，逗号分隔或自定义文本',
+    last_heartbeat_at DATETIME NULL COMMENT '最后心跳时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_agents_agent_key (agent_key)
+) COMMENT='Agent节点表';
+
+-- =========================
+-- proxies
+-- =========================
+CREATE TABLE IF NOT EXISTS proxies (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '代理配置主键ID',
+    name VARCHAR(128) NOT NULL DEFAULT '' COMMENT '代理名称',
+    protocol VARCHAR(32) NOT NULL DEFAULT 'http' COMMENT '代理协议：http / https / socks5',
+    host VARCHAR(255) NOT NULL DEFAULT '' COMMENT '代理主机地址',
+    port INT NOT NULL DEFAULT 0 COMMENT '代理端口',
+    username VARCHAR(128) NOT NULL DEFAULT '' COMMENT '代理用户名',
+    password VARCHAR(128) NOT NULL DEFAULT '' COMMENT '代理密码',
+    notes VARCHAR(500) NOT NULL DEFAULT '' COMMENT '代理备注',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id)
+) COMMENT='代理配置表';
+
+-- =========================
+-- fingerprint_templates
+-- =========================
+CREATE TABLE IF NOT EXISTS fingerprint_templates (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '指纹模板主键ID',
+    name VARCHAR(128) NOT NULL DEFAULT '' COMMENT '指纹模板名称',
+    config_json LONGTEXT NOT NULL COMMENT '指纹模板配置JSON',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id)
+) COMMENT='浏览器指纹模板表';
+
+-- =========================
+-- browser_profiles
+-- =========================
+CREATE TABLE IF NOT EXISTS browser_profiles (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '浏览器Profile主键ID',
+    name VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'Profile名称',
+    owner_agent_id BIGINT NULL COMMENT '归属Agent ID，通常用于profile_owner调度',
+    proxy_id BIGINT NULL COMMENT '绑定代理ID',
+    fingerprint_template_id BIGINT NULL COMMENT '绑定指纹模板ID',
+    status VARCHAR(32) NOT NULL DEFAULT 'idle' COMMENT '状态：idle / locked / running',
+    local_profile_path VARCHAR(500) NOT NULL DEFAULT '' COMMENT '客户端本地Profile目录路径',
+    startup_args_json LONGTEXT NOT NULL COMMENT '浏览器启动参数JSON',
+    runtime_meta_json LONGTEXT NOT NULL COMMENT '运行时元数据JSON',
+    last_used_at DATETIME NULL COMMENT '最后使用时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_browser_profiles_name (name),
+    KEY idx_browser_profiles_owner_agent_id (owner_agent_id),
+    KEY idx_browser_profiles_proxy_id (proxy_id),
+    KEY idx_browser_profiles_fingerprint_template_id (fingerprint_template_id)
+) COMMENT='浏览器隔离Profile表';
+
+-- =========================
+-- browser_profile_locks
+-- =========================
+CREATE TABLE IF NOT EXISTS browser_profile_locks (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Profile锁主键ID',
+    profile_id BIGINT NOT NULL COMMENT '被锁定的Profile ID',
+    task_id BIGINT NULL COMMENT '关联任务ID',
+    task_run_id BIGINT NULL COMMENT '关联任务运行ID',
+    agent_id BIGINT NULL COMMENT '持有锁的Agent ID',
+    lease_token VARCHAR(128) NOT NULL DEFAULT '' COMMENT '租约令牌，用于续租和释放',
+    status VARCHAR(32) NOT NULL DEFAULT 'reserved' COMMENT '锁状态：reserved / leased / released',
+    expires_at DATETIME NOT NULL COMMENT '锁过期时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_browser_profile_locks_profile_status (profile_id, status),
+    KEY idx_browser_profile_locks_task_run_id (task_run_id)
+) COMMENT='浏览器Profile锁表';
+
+-- =========================
+-- task_templates
+-- =========================
+CREATE TABLE IF NOT EXISTS task_templates (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务模板主键ID',
+    name VARCHAR(128) NOT NULL DEFAULT '' COMMENT '任务模板名称',
+    definition_json LONGTEXT NOT NULL COMMENT '任务模板定义JSON',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id)
+) COMMENT='任务模板表';
+
+-- =========================
+-- tasks
+-- =========================
+CREATE TABLE IF NOT EXISTS tasks (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务主键ID',
+    name VARCHAR(128) NOT NULL DEFAULT '' COMMENT '任务名称',
+    browser_profile_id BIGINT NOT NULL COMMENT '绑定执行的Profile ID',
+    scheduling_strategy VARCHAR(32) NOT NULL DEFAULT 'profile_owner' COMMENT '调度策略：profile_owner / preferred_agent / least_loaded',
+    preferred_agent_id BIGINT NULL COMMENT '优先Agent ID',
+    status VARCHAR(32) NOT NULL DEFAULT 'queued' COMMENT '状态：queued / leased / running / completed / failed / cancelled',
+    payload_json LONGTEXT NOT NULL COMMENT '任务编排与参数JSON',
+    priority INT NOT NULL DEFAULT 100 COMMENT '任务优先级，数值越小可表示越高优先级',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_tasks_browser_profile_id (browser_profile_id),
+    KEY idx_tasks_status (status),
+    KEY idx_tasks_preferred_agent_id (preferred_agent_id)
+) COMMENT='工作流任务表';
+
+-- =========================
+-- task_runs
+-- =========================
+CREATE TABLE IF NOT EXISTS task_runs (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务运行主键ID',
+    task_id BIGINT NOT NULL COMMENT '所属任务ID',
+    browser_profile_id BIGINT NOT NULL COMMENT '执行时使用的Profile ID',
+    assigned_agent_id BIGINT NULL COMMENT '实际分配的Agent ID',
+    status VARCHAR(32) NOT NULL DEFAULT 'queued' COMMENT '运行状态：queued / leased / running / completed / failed / cancelled',
+    current_step_id VARCHAR(128) NOT NULL DEFAULT '' COMMENT '当前执行步骤ID',
+    current_step_label VARCHAR(255) NOT NULL DEFAULT '' COMMENT '当前执行步骤名称',
+    current_url VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '当前页面URL',
+    result_json LONGTEXT NOT NULL COMMENT '执行结果JSON',
+    last_preview_path VARCHAR(500) NOT NULL DEFAULT '' COMMENT '最后一次预览截图路径',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    started_at DATETIME NULL COMMENT '开始执行时间',
+    finished_at DATETIME NULL COMMENT '结束时间',
+    PRIMARY KEY (id),
+    KEY idx_task_runs_status_agent (status, assigned_agent_id),
+    KEY idx_task_runs_task_id (task_id),
+    KEY idx_task_runs_browser_profile_id (browser_profile_id)
+) COMMENT='任务运行实例表';
+
+-- =========================
+-- task_run_logs
+-- =========================
+CREATE TABLE IF NOT EXISTS task_run_logs (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务运行日志主键ID',
+    task_run_id BIGINT NOT NULL COMMENT '所属任务运行ID',
+    level VARCHAR(16) NOT NULL DEFAULT 'info' COMMENT '日志级别：info / warn / error / debug',
+    step_id VARCHAR(128) NOT NULL DEFAULT '' COMMENT '关联步骤ID',
+    message TEXT NOT NULL COMMENT '日志内容',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_task_run_logs_task_run_id (task_run_id)
+) COMMENT='任务运行日志表';
+
+-- =========================
+-- browser_artifacts
+-- =========================
+CREATE TABLE IF NOT EXISTS browser_artifacts (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '浏览器产物主键ID',
+    task_run_id BIGINT NOT NULL COMMENT '所属任务运行ID',
+    artifact_type VARCHAR(32) NOT NULL DEFAULT 'screenshot' COMMENT '产物类型：screenshot / video / html / trace',
+    file_path VARCHAR(1000) NOT NULL DEFAULT '' COMMENT '文件路径',
+    file_name VARCHAR(255) NOT NULL DEFAULT '' COMMENT '文件名',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_browser_artifacts_task_run_id (task_run_id)
+) COMMENT='浏览器运行产物表';
+
+-- =========================
+-- agent_commands
+-- =========================
+CREATE TABLE IF NOT EXISTS agent_commands (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Agent命令主键ID',
+    agent_id BIGINT NOT NULL COMMENT '目标Agent ID',
+    profile_id BIGINT NULL COMMENT '关联Profile ID，可为空',
+    command_type VARCHAR(64) NOT NULL DEFAULT '' COMMENT '命令类型，如 test_open_profile / takeover_start / takeover_stop',
+    payload_json LONGTEXT NOT NULL COMMENT '命令参数JSON',
+    status VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT '命令状态：pending / processing / completed / failed',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_agent_commands_agent_status_created (agent_id, status, created_at),
+    KEY idx_agent_commands_profile_id (profile_id)
+) COMMENT='Agent命令队列表';

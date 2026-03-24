@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Login</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="login-wrap card" style="padding:24px">
+    <h1 style="margin-top:0;color:#1877f2">facebook</h1>
+    <% if (error) { %>
+      <div class="notice" style="background:#fee2e2;color:#b91c1c;border-color:#fecaca"><%= error %></div>
+    <% } %>
+    <form method="POST" action="/login">
+      <input class="field" name="username" placeholder="username: alice / bob / cindy" />
+      <input class="field" type="password" name="password" placeholder="password: 123456" />
+      <button class="primary-btn" type="submit">Log In</button>
+    </form>
+    <div style="margin-top:14px" class="small">
+      Test accounts: alice / bob / cindy with password 123456
+    </div>
+  </div>
+</body>
+</html>

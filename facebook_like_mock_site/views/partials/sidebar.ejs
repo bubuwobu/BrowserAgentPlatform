@@ -1,0 +1,19 @@
+<aside class="app-sidebar">
+  <div class="sidebar-logo">TikTok Mock</div>
+  <nav class="sidebar-nav">
+    <a href="/feed" class="<%= active === 'feed' ? 'active' : '' %>" data-testid="nav-feed">For You</a>
+    <a href="/profile/<%= currentUser.username %>" class="<%= active === 'profile' ? 'active' : '' %>" data-testid="nav-profile">Profile</a>
+  </nav>
+
+  <div class="sidebar-user">
+    <img src="<%= currentUser.avatar %>" alt="" />
+    <div>
+      <strong><%= currentUser.displayName %></strong>
+      <div>@<%= currentUser.username %></div>
+    </div>
+  </div>
+
+  <form method="post" action="/logout">
+    <button type="submit" class="ghost-btn" data-testid="logout-btn">退出登录</button>
+  </form>
+</aside>

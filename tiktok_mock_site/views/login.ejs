@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok Mock Login</title>
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body class="login-page">
+  <div class="login-shell">
+    <div class="login-card">
+      <div class="brand">TikTok Mock</div>
+      <h1>登录到仿站</h1>
+      <p class="muted">测试账号：alice / 123456</p>
+      <% if (error) { %>
+        <div class="error-banner"><%= error %></div>
+      <% } %>
+      <form method="post" action="/login" data-testid="login-form">
+        <input type="hidden" name="next" value="<%= next || '/feed' %>" />
+        <label>用户名</label>
+        <input data-testid="username-input" name="username" class="input" value="alice" />
+        <label>密码</label>
+        <input data-testid="password-input" name="password" type="password" class="input" value="123456" />
+        <button data-testid="login-submit" class="btn btn-primary" type="submit">登录</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

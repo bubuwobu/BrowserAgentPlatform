@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Profile</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <%- include('partials_topbar') %>
+  <div class="container">
+    <div class="card" style="padding:20px;margin-bottom:18px">
+      <h1 style="margin:0"><%= profileUser.displayName %></h1>
+      <div class="small">@<%= profileUser.username %></div>
+    </div>
+
+    <% posts.forEach(post => { %>
+      <article class="feed-post card" data-testid="feed-post">
+        <div class="post-header">
+          <div class="avatar"></div>
+          <div>
+            <div class="author"><%= post.author.displayName %></div>
+            <div class="small"><%= post.createdAt %> · Public</div>
+          </div>
+        </div>
+        <div class="post-content"><%= post.content %></div>
+        <img class="post-image" src="<%= post.image %>" alt="post-image" />
+      </article>
+    <% }) %>
+  </div>
+</body>
+</html>

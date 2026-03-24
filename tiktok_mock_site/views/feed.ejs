@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TikTok Mock Clone</title>
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body class="tt-body">
+  <aside class="tt-sidebar">
+    <div class="tt-logo">TikTok</div>
+    <div class="tt-search">搜索</div>
+    <nav class="tt-nav">
+      <a class="tt-nav-item active" href="/feed">推荐</a>
+      <a class="tt-nav-item" href="#">探索</a>
+      <a class="tt-nav-item" href="#">已关注</a>
+      <a class="tt-nav-item" href="/profile/<%= user.username %>">主页</a>
+    </nav>
+    <div class="tt-side-footer">
+      <div>公司</div>
+      <div>条款和政策</div>
+      <div>© 2026 TikTok</div>
+    </div>
+  </aside>
+
+  <main class="tt-main">
+    <div class="tt-feed-shell">
+      <div class="tt-loading-layer" data-testid="tt-loading-layer">
+        <div class="tt-spinner"></div>
+        <div class="tt-loading-text">正在加载推荐内容...</div>
+      </div>
+
+      <div class="tt-video-stack" data-testid="tt-video-stack">
+        <% videos.forEach((video, index) => { %>
+          <article
+            class="tt-video-card <%= video.id === activeVideoId ? 'active' : 'inactive' %>"
+            data-testid="tt-video-card"
+            data-video-id="<%= video.id %>"
+            data-index="<%= index %>"
+            data-active="<%= video.id === activeVideoId ? 'true' : 'false' %>"
+          >
+            <div class="tt-video-shell">
+              <div class="tt-video-frame">
+                <img class="tt-video-cover" src="<%= video.coverImage %>" alt="" />
+                <div class="tt-video-gradient"></div>
+
+                <div class="tt-video-top">
+                  <div class="tt-chip-group">
+                    <span class="tt-chip" data-testid="tt-duration"><%= video.durationSec %>s</span>
+                    <span class="tt-chip" data-testid="tt-created-at"><%= video.createdAtLabel %></span>
+                  </div>
+                  <div class="tt-dots">•••</div>
+                </div>
+
+                <div class="tt-video-bottom">
+                  <div class="tt-bottom-left">
+                    <div class="tt-author-row">
+                      <a href="/profile/<%= video.author.username %>" data-testid="tt-author-link" class="tt-author-link">
+                        @<span data-testid="tt-author-name"><%= video.author.username %></span>
+                      </a>
+                      <% if (video.author.verified) { %>
+                        <span class="tt-verified" data-testid="tt-author-verified">✔</span>
+                      <% } %>
+                    </div>
+
+                    <div class="tt-caption-row">
+                      <span class="tt-caption" data-testid="tt-caption"><%= video.caption %></span>
+                      <button class="tt-more">更多</button>
+                    </div>
+
+                    <div class="tt-music-row" data-testid="tt-music-name">♫ <%= video.musicName %></div>
+                    <div class="tt-translate-row">查看翻译</div>
+                  </div>
+                </div>
+
+                <div class="tt-progress-track">
+                  <span class="tt-progress-bar" data-testid="tt-progress-bar"></span>
+                </div>
+              </div>
+
+              <div class="tt-action-rail">
+                <a href="/profile/<%= video.author.username %>" class="tt-avatar-wrap">
+                  <img class="tt-author-avatar" src="<%= video.author.avatar %>" alt="" />
+                  <span class="tt-follow-plus">+</span>
+                </a>
+
+                <button class="tt-action-btn" data-testid="tt-like-btn" data-action="like">❤</button>
+                <div class="tt-action-count" data-testid="tt-like-count"><%= video.likeCountLabel %></div>
+
+                <button class="tt-action-btn" data-testid="tt-comment-toggle" data-action="toggle-comment">💬</button>
+                <div class="tt-action-count" data-testid="tt-comment-count"><%= video.commentsCountLabel %></div>
+
+                <button class="tt-action-btn" data-testid="tt-favorite-btn" data-action="favorite">🔖</button>
+                <div class="tt-action-count" data-testid="tt-favorite-count"><%= video.favoriteCountLabel %></div>
+
+                <button class="tt-action-btn" data-testid="tt-share-btn" data-action="share">↗</button>
+                <div class="tt-action-count" data-testid="tt-share-count"><%= video.shareCountLabel %></div>
+
+                <a href="/profile/<%= video.author.username %>" class="tt-mini-record">
+                  <img src="<%= video.author.avatar %>" alt="" />
+                </a>
+              </div>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+
+      <div class="tt-float-nav" data-testid="tt-nav-floating">
+        <button class="tt-float-btn" data-testid="tt-nav-prev" data-nav="prev">⌃</button>
+        <button class="tt-float-btn" data-testid="tt-nav-next" data-nav="next">⌄</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="tt-comment-panel" data-testid="tt-comment-panel">
+    <% const active = videos[activeIndex]; %>
+    <div class="tt-comment-header">
+      <div><strong>评论</strong> <span class="tt-comment-total" data-testid="tt-comment-total"><%= active.commentsCountLabel %></span></div>
+      <button class="tt-comment-close" data-testid="tt-comment-close">×</button>
+    </div>
+
+    <div class="tt-comment-hero" data-testid="tt-comment-hero">
+      <img class="tt-comment-hero-image" src="<%= active.coverImage %>" alt="" />
+      <div class="tt-comment-hero-meta">
+        <div class="tt-comment-author"><%= active.author.displayName %></div>
+        <div class="tt-comment-preview"><%= active.caption %></div>
+      </div>
+    </div>
+
+    <div class="tt-comment-list" data-testid="tt-comment-list">
+      <% active.comments.forEach((comment) => { %>
+        <div class="tt-comment-item">
+          <img class="tt-comment-avatar" src="<%= comment.avatar %>" alt="" />
+          <div class="tt-comment-content">
+            <div class="tt-comment-name"><%= comment.displayName %></div>
+            <div class="tt-comment-text"><%= comment.text %></div>
+            <div class="tt-comment-sub"><%= comment.createdAtLabel %>前 回复</div>
+          </div>
+          <div class="tt-comment-like">♡</div>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="tt-comment-compose">
+      <div class="tt-comment-input-wrap">
+        <textarea class="tt-comment-input" data-testid="tt-comment-input" placeholder="添加评论..."></textarea>
+        <div class="tt-comment-tools">@ 😊</div>
+      </div>
+      <button class="tt-comment-send" data-testid="tt-comment-submit">↑</button>
+    </div>
+
+    <div class="tt-inline-notice" data-testid="tt-comment-notice"></div>
+  </aside>
+
+  <script>
+    window.__INITIAL_STATE__ = {
+      activeVideoId: <%- JSON.stringify(activeVideoId) %>,
+      totalCount: <%- JSON.stringify(videos.length) %>
+    };
+  </script>
+  <script src="/public/app.js"></script>
+</body>
+</html>
