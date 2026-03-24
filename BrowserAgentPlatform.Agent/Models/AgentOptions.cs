@@ -1,7 +1,7 @@
 namespace BrowserAgentPlatform.Agent.Models;
 public class AgentOptions
 {
-    public string ApiBaseUrl { get; set; } = "http://localhost:5216";
+    public string ApiBaseUrl { get; set; } = "http://localhost:12126";
     public string AgentKey { get; set; } = "agent-local-001";
     public string Name { get; set; } = "本地执行器";
     public string MachineName { get; set; } = "DEV-PC";

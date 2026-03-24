@@ -21,11 +21,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
 });
 
+var corsOriginsRaw = builder.Configuration["Cors:WebOrigins"]
+                     ?? builder.Configuration["Cors:WebOrigin"]
+                     ?? "http://localhost:5173,http://127.0.0.1:5173";
+
+var corsOrigins = corsOriginsRaw
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("web", policy =>
     {
-        policy.WithOrigins(builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -48,6 +55,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = signingKey
         };
+
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -83,9 +91,11 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.UseCors("web");
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 app.MapHub<LiveHub>("/hubs/live");
 app.MapGet("/", () => Results.Ok(new { ok = true, service = "BrowserAgentPlatform.Api" }));
