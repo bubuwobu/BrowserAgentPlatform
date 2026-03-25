@@ -1,6 +1,7 @@
 using BrowserAgentPlatform.Api.Data;
 using BrowserAgentPlatform.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace BrowserAgentPlatform.Api.Services;
 
@@ -13,7 +14,7 @@ public class SchedulerService
         _db = db;
     }
 
-    public async Task<(TaskRun run, BrowserProfileLock profileLock)?> LeaseNextRunForAgentAsync(string agentKey)
+    public async Task<(TaskRun run, BrowserProfileLock profileLock, WorkflowTask task)?> LeaseNextRunForAgentAsync(string agentKey)
     {
         var agent = await _db.Agents.FirstOrDefaultAsync(x => x.AgentKey == agentKey);
         if (agent is null) return null;
@@ -29,20 +30,26 @@ public class SchedulerService
                 .Where(x => x.TaskRunId == leased.Id && x.Status == "leased")
                 .OrderByDescending(x => x.Id)
                 .FirstOrDefaultAsync();
-            if (existingLock is not null) return (leased, existingLock);
+            if (existingLock is not null)
+            {
+                var leasedTask = await _db.Tasks.FindAsync(leased.TaskId);
+                if (leasedTask is not null) return (leased, existingLock, leasedTask);
+            }
         }
 
         if (agent.CurrentRuns >= agent.MaxParallelRuns) return null;
 
         var queuedRuns = await _db.TaskRuns
             .Where(x => x.Status == "queued")
-            .OrderBy(x => x.Id)
+            .Join(_db.Tasks, r => r.TaskId, t => t.Id, (r, t) => new { Run = r, Task = t })
+            .OrderByDescending(x => x.Task.Priority)
+            .ThenBy(x => x.Run.Id)
             .ToListAsync();
 
-        foreach (var run in queuedRuns)
+        foreach (var item in queuedRuns)
         {
-            var task = await _db.Tasks.FindAsync(run.TaskId);
-            if (task is null) continue;
+            var run = item.Run;
+            var task = item.Task;
             var profile = await _db.BrowserProfiles.FindAsync(run.BrowserProfileId);
             if (profile is null) continue;
 
@@ -59,6 +66,7 @@ public class SchedulerService
             };
             if (!matched) continue;
 
+            await using IDbContextTransaction tx = await _db.Database.BeginTransactionAsync();
             var leaseToken = Guid.NewGuid().ToString("N");
             var lockRow = new BrowserProfileLock
             {
@@ -73,24 +81,30 @@ public class SchedulerService
             _db.BrowserProfileLocks.Add(lockRow);
 
             run.Status = "leased";
+            run.LeaseToken = leaseToken;
             run.AssignedAgentId = agent.Id;
+            run.HeartbeatAt = DateTime.UtcNow;
             agent.CurrentRuns += 1;
             profile.Status = "leased";
             await _db.SaveChangesAsync();
-            return (run, lockRow);
+            await tx.CommitAsync();
+            return (run, lockRow, task);
         }
 
         return null;
     }
 
-    public async Task RefreshLeaseAsync(long taskRunId, string leaseToken)
+    public async Task<bool> RefreshLeaseAsync(long taskRunId, string leaseToken)
     {
         var lease = await _db.BrowserProfileLocks
             .Where(x => x.TaskRunId == taskRunId && x.LeaseToken == leaseToken && x.Status == "leased")
             .FirstOrDefaultAsync();
-        if (lease is null) return;
+        if (lease is null) return false;
         lease.ExpiresAt = DateTime.UtcNow.AddMinutes(20);
+        var run = await _db.TaskRuns.FindAsync(taskRunId);
+        if (run is not null) run.HeartbeatAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        return true;
     }
 
     public async Task ReleaseRunAsync(long taskRunId)
@@ -119,6 +133,7 @@ public class SchedulerService
             profile.Status = run.Status is "running" or "leased" ? "busy" : "idle";
             profile.LastUsedAt = DateTime.UtcNow;
         }
+        run.LeaseToken = "";
 
         await _db.SaveChangesAsync();
     }
