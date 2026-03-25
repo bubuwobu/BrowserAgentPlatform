@@ -147,16 +147,27 @@ function fillExample() {
 }
 
 async function load() {
-  const [taskList, runList, agentList, profileList] = await Promise.all([
+  const [taskRes, runRes, agentRes, profileRes] = await Promise.allSettled([
     api.tasks(),
     api.runs(),
     api.agents(),
     api.profiles()
   ])
-  tasks.value = taskList
-  runs.value = runList
-  agents.value = agentList
-  profiles.value = profileList
+
+  tasks.value = taskRes.status === 'fulfilled' ? taskRes.value : []
+  runs.value = runRes.status === 'fulfilled' ? runRes.value : []
+  agents.value = agentRes.status === 'fulfilled' ? agentRes.value : []
+  profiles.value = profileRes.status === 'fulfilled' ? profileRes.value : []
+
+  const errors = [taskRes, runRes, agentRes, profileRes]
+    .filter(item => item.status === 'rejected')
+    .map(item => item.reason?.message || '请求失败')
+
+  if (errors.length) {
+    message.value = `部分数据加载失败：${errors.join('；')}`
+  } else if (!saving.value) {
+    message.value = ''
+  }
 }
 
 async function save() {
