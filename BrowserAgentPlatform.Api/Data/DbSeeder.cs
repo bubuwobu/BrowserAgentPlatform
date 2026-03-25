@@ -8,6 +8,37 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
     {
+        // Backward-compatible bootstrap for environments that were created before
+        // new tables were introduced (EnsureCreated does not evolve existing schema).
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `audit_events` (
+              `id` BIGINT NOT NULL AUTO_INCREMENT,
+              `event_type` longtext NOT NULL,
+              `actor_type` longtext NOT NULL,
+              `actor_id` longtext NOT NULL,
+              `target_type` longtext NOT NULL,
+              `target_id` longtext NOT NULL,
+              `details_json` longtext NOT NULL,
+              `created_at` datetime(6) NOT NULL,
+              CONSTRAINT `PK_audit_events` PRIMARY KEY (`id`)
+            );
+            """);
+
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `run_isolation_reports` (
+              `id` BIGINT NOT NULL AUTO_INCREMENT,
+              `task_run_id` BIGINT NOT NULL,
+              `browser_profile_id` BIGINT NOT NULL,
+              `proxy_snapshot_json` longtext NOT NULL,
+              `fingerprint_snapshot_json` longtext NOT NULL,
+              `storage_check_json` longtext NOT NULL,
+              `network_check_json` longtext NOT NULL,
+              `result` longtext NOT NULL,
+              `created_at` datetime(6) NOT NULL,
+              CONSTRAINT `PK_run_isolation_reports` PRIMARY KEY (`id`)
+            );
+            """);
+
         if (!await db.Users.AnyAsync())
         {
             db.Users.Add(new AppUser
