@@ -77,8 +77,10 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<SchedulerService>();
 builder.Services.AddScoped<ArtifactService>();
 builder.Services.AddScoped<LiveHubNotifier>();
+builder.Services.AddScoped<IsolationPolicyService>();
 builder.Services.AddHostedService<QueueScanBackgroundService>();
 builder.Services.AddHostedService<LeaseReaperBackgroundService>();
+builder.Services.AddHostedService<RunWatchdogBackgroundService>();
 
 var app = builder.Build();
 
