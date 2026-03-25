@@ -10,16 +10,16 @@
         <input class="input" v-model="form.name" placeholder="任务名称" />
 
         <select class="input" v-model="form.browserProfileId">
-          <option :value="null">选择 BrowserProfile</option>
+          <option :value="null">请选择 BrowserProfile（必选）</option>
           <option v-for="item in profileOptions" :key="item.id" :value="item.id">
             {{ item.id }} - {{ item.name }}（{{ item.status }}）
           </option>
         </select>
 
         <select class="input" v-model="form.schedulingStrategy">
-          <option value="profile_owner">profile_owner</option>
+          <option value="least_loaded">least_loaded（推荐）</option>
+          <option value="profile_owner">profile_owner（需 Profile 绑定 owner）</option>
           <option value="preferred_agent">preferred_agent</option>
-          <option value="least_loaded">least_loaded</option>
         </select>
 
         <select class="input" v-model="form.preferredAgentId">
@@ -37,6 +37,13 @@
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
           <button class="btn secondary" @click="fillExample">填充示例</button>
           <button class="btn secondary" @click="load">刷新</button>
+        </div>
+
+        <div class="muted">
+          * BrowserProfile 必选。<br />
+          * `least_loaded`：任意在线 Agent 都可执行（最不容易卡队列）。<br />
+          * `profile_owner`：仅 Profile 的 owner Agent 可执行。<br />
+          * `preferred_agent`：必须再选择 preferredAgent。
         </div>
 
         <div v-if="message" class="muted">{{ message }}</div>
@@ -114,7 +121,7 @@ let timer = null
 const form = reactive({
   name: '',
   browserProfileId: null,
-  schedulingStrategy: 'profile_owner',
+  schedulingStrategy: 'least_loaded',
   preferredAgentId: null,
   priority: 100,
   payloadJson: '{}'
@@ -122,6 +129,7 @@ const form = reactive({
 
 const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
+const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
 
 function fillExample() {
   form.name = '百度搜索示例流程'
@@ -174,6 +182,21 @@ async function save() {
   saving.value = true
   message.value = ''
   try {
+    if (!form.browserProfileId) {
+      message.value = '请先选择 BrowserProfile。'
+      return
+    }
+
+    if (form.schedulingStrategy === 'preferred_agent' && !form.preferredAgentId) {
+      message.value = '当前策略为 preferred_agent，请选择 preferredAgent。'
+      return
+    }
+
+    if (form.schedulingStrategy === 'profile_owner' && !selectedProfile.value?.ownerAgentId) {
+      message.value = '当前 Profile 没有 ownerAgent，不能用 profile_owner。请改为 least_loaded 或先绑定 owner。'
+      return
+    }
+
     await api.createTask({
       name: form.name,
       browserProfileId: form.browserProfileId,
@@ -185,7 +208,7 @@ async function save() {
     message.value = '任务已创建'
     form.name = ''
     form.browserProfileId = null
-    form.schedulingStrategy = 'profile_owner'
+    form.schedulingStrategy = 'least_loaded'
     form.preferredAgentId = null
     form.priority = 100
     form.payloadJson = '{}'

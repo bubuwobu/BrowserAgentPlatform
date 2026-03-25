@@ -42,6 +42,27 @@ public class TasksController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(WorkflowTaskRequest request)
     {
+        if (request.BrowserProfileId <= 0)
+        {
+            return BadRequest("请选择有效的 BrowserProfile。");
+        }
+
+        var profile = await _db.BrowserProfiles.FindAsync(request.BrowserProfileId);
+        if (profile is null)
+        {
+            return BadRequest($"BrowserProfile 不存在：{request.BrowserProfileId}");
+        }
+
+        if (request.SchedulingStrategy == "preferred_agent" && !request.PreferredAgentId.HasValue)
+        {
+            return BadRequest("schedulingStrategy=preferred_agent 时必须选择 preferredAgent。");
+        }
+
+        if (request.SchedulingStrategy == "profile_owner" && !profile.OwnerAgentId.HasValue)
+        {
+            return BadRequest("当前 Profile 未绑定 OwnerAgent，不能使用 profile_owner 策略。可改为 least_loaded 或先绑定 OwnerAgent。");
+        }
+
         var task = new WorkflowTask
         {
             Name = request.Name,
