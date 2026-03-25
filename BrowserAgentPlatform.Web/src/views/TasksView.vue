@@ -88,6 +88,7 @@
               <div class="muted" style="margin-top:8px;">task={{ run.taskId }} / profile={{ run.browserProfileId }}</div>
               <div class="muted">step={{ run.currentStepLabel || '-' }}</div>
               <div class="muted">url={{ run.currentUrl || '-' }}</div>
+              <div class="muted">result={{ run.resultJson || '-' }}</div>
             </div>
             <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
           </div>
@@ -123,27 +124,50 @@ const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
 
 function fillExample() {
-  form.name = '打开示例网站'
+  form.name = '百度搜索示例流程'
   form.payloadJson = JSON.stringify({
     steps: [
-      { id: 'step_open', type: 'open', label: '打开 example', url: 'https://example.com' },
-      { id: 'step_wait', type: 'wait_for_timeout', label: '等待', timeoutMs: 2000 },
-      { id: 'step_done', type: 'end_success', label: '结束' }
+      { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: 'https://www.baidu.com' } },
+      { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: '#kw', timeout: 15000 } },
+      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: '#kw', value: 'BrowserAgentPlatform 自动化测试' } },
+      { id: 'step_click_search', type: 'click', data: { label: '点击搜索按钮', selector: '#su' } },
+      { id: 'step_wait_result', type: 'wait_for_element', data: { label: '等待结果区域', selector: '#content_left', timeout: 15000 } },
+      { id: 'step_extract_title', type: 'extract_text', data: { label: '提取首条结果标题', selector: '#content_left h3' } },
+      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
+    ],
+    edges: [
+      { source: 'step_open', target: 'step_wait_input' },
+      { source: 'step_wait_input', target: 'step_type_keyword' },
+      { source: 'step_type_keyword', target: 'step_click_search' },
+      { source: 'step_click_search', target: 'step_wait_result' },
+      { source: 'step_wait_result', target: 'step_extract_title' },
+      { source: 'step_extract_title', target: 'step_done' }
     ]
   }, null, 2)
 }
 
 async function load() {
-  const [taskList, runList, agentList, profileList] = await Promise.all([
+  const [taskRes, runRes, agentRes, profileRes] = await Promise.allSettled([
     api.tasks(),
     api.runs(),
     api.agents(),
     api.profiles()
   ])
-  tasks.value = taskList
-  runs.value = runList
-  agents.value = agentList
-  profiles.value = profileList
+
+  tasks.value = taskRes.status === 'fulfilled' ? taskRes.value : []
+  runs.value = runRes.status === 'fulfilled' ? runRes.value : []
+  agents.value = agentRes.status === 'fulfilled' ? agentRes.value : []
+  profiles.value = profileRes.status === 'fulfilled' ? profileRes.value : []
+
+  const errors = [taskRes, runRes, agentRes, profileRes]
+    .filter(item => item.status === 'rejected')
+    .map(item => item.reason?.message || '请求失败')
+
+  if (errors.length) {
+    message.value = `部分数据加载失败：${errors.join('；')}`
+  } else if (!saving.value) {
+    message.value = ''
+  }
 }
 
 async function save() {
