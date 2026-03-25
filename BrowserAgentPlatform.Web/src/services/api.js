@@ -27,6 +27,7 @@ export const api = {
 
   proxies: () => request('/api/config/proxies'),
   createProxy: (body) => request('/api/config/proxies', { method: 'POST', body: JSON.stringify(body) }),
+  resetAndReseedDemoData: () => request('/api/config/demo/reset-reseed', { method: 'POST' }),
 
   fingerprints: () => request('/api/config/fingerprints'),
   createFingerprint: (body) => request('/api/config/fingerprints', { method: 'POST', body: JSON.stringify(body) }),
