@@ -5,6 +5,7 @@ using BrowserAgentPlatform.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace BrowserAgentPlatform.Api.Controllers;
 
@@ -82,10 +83,19 @@ public class AgentsController : ControllerBase
     public async Task<IActionResult> Pull(string agentKey)
     {
         var result = await _scheduler.LeaseNextRunForAgentAsync(agentKey);
-        if (result is null) return Ok(new AgentPullResponse(null, null, null, null, null));
+        if (result is null) return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
 
-        var task = await _db.Tasks.FindAsync(result.Value.run.TaskId);
-        return Ok(new AgentPullResponse(result.Value.run.Id, result.Value.run.TaskId, result.Value.run.BrowserProfileId, result.Value.profileLock.LeaseToken, task?.PayloadJson));
+        var profile = await _db.BrowserProfiles.FindAsync(result.Value.run.BrowserProfileId);
+        return Ok(new AgentPullResponse(
+            result.Value.run.Id,
+            result.Value.run.TaskId,
+            result.Value.run.BrowserProfileId,
+            result.Value.profileLock.LeaseToken,
+            result.Value.task.PayloadJson,
+            result.Value.task.TimeoutSeconds,
+            result.Value.task.RetryPolicyJson,
+            profile?.IsolationPolicyJson
+        ));
     }
 
     [AllowAnonymous]
@@ -94,11 +104,16 @@ public class AgentsController : ControllerBase
     {
         var run = await _db.TaskRuns.FindAsync(request.TaskRunId);
         if (run is null) return NotFound();
+        if (string.IsNullOrWhiteSpace(request.LeaseToken) || request.LeaseToken != run.LeaseToken)
+        {
+            return Conflict(new { ok = false, message = "lease token mismatch or expired" });
+        }
 
         run.Status = request.Status;
         run.CurrentStepId = request.CurrentStepId;
         run.CurrentStepLabel = request.CurrentStepLabel;
         run.CurrentUrl = request.CurrentUrl;
+        run.HeartbeatAt = request.HeartbeatAt ?? DateTime.UtcNow;
 
         if (!string.IsNullOrWhiteSpace(request.PreviewBase64))
         {
@@ -125,7 +140,8 @@ public class AgentsController : ControllerBase
             message = request.Message
         });
 
-        await _scheduler.RefreshLeaseAsync(run.Id, "");
+        var refreshed = await _scheduler.RefreshLeaseAsync(run.Id, request.LeaseToken);
+        if (!refreshed) return Conflict(new { ok = false, message = "lease expired" });
         return Ok(new { ok = true });
     }
 
@@ -135,9 +151,15 @@ public class AgentsController : ControllerBase
     {
         var run = await _db.TaskRuns.FindAsync(request.TaskRunId);
         if (run is null) return NotFound();
+        if (string.IsNullOrWhiteSpace(request.LeaseToken) || request.LeaseToken != run.LeaseToken)
+        {
+            return Conflict(new { ok = false, message = "lease token mismatch or expired" });
+        }
 
         run.Status = request.Status;
         run.ResultJson = request.ResultJson;
+        run.ErrorCode = request.ErrorCode ?? "";
+        run.ErrorMessage = request.ErrorMessage ?? "";
         run.FinishedAt = DateTime.UtcNow;
         if (!string.IsNullOrWhiteSpace(request.FinalPreviewBase64))
         {
@@ -153,6 +175,26 @@ public class AgentsController : ControllerBase
             Level = request.Status == "completed" ? "info" : "error",
             Message = $"Run finished with status: {request.Status}"
         });
+
+        if (!string.IsNullOrWhiteSpace(request.IsolationReportJson))
+        {
+            var reportJson = request.IsolationReportJson;
+            using var doc = JsonDocument.Parse(reportJson);
+            var root = doc.RootElement;
+            string GetStringOrDefault(string name, string fallback = "{}")
+                => root.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.String ? prop.GetString() ?? fallback : fallback;
+
+            _db.RunIsolationReports.Add(new RunIsolationReport
+            {
+                TaskRunId = run.Id,
+                BrowserProfileId = run.BrowserProfileId,
+                ProxySnapshotJson = GetStringOrDefault("proxySnapshotJson"),
+                FingerprintSnapshotJson = GetStringOrDefault("fingerprintSnapshotJson"),
+                StorageCheckJson = GetStringOrDefault("storageCheckJson"),
+                NetworkCheckJson = GetStringOrDefault("networkCheckJson"),
+                Result = GetStringOrDefault("result", "pass")
+            });
+        }
 
         await _db.SaveChangesAsync();
         await _scheduler.ReleaseRunAsync(run.Id);

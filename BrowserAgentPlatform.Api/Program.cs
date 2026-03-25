@@ -79,6 +79,7 @@ builder.Services.AddScoped<ArtifactService>();
 builder.Services.AddScoped<LiveHubNotifier>();
 builder.Services.AddHostedService<QueueScanBackgroundService>();
 builder.Services.AddHostedService<LeaseReaperBackgroundService>();
+builder.Services.AddHostedService<RunWatchdogBackgroundService>();
 
 var app = builder.Build();
 

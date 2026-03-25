@@ -34,6 +34,8 @@ public class TasksController : ControllerBase
             PreferredAgentId = request.PreferredAgentId,
             PayloadJson = request.PayloadJson,
             Priority = request.Priority,
+            TimeoutSeconds = request.TimeoutSeconds,
+            RetryPolicyJson = request.RetryPolicyJson,
             Status = "queued"
         };
         _db.Tasks.Add(task);
