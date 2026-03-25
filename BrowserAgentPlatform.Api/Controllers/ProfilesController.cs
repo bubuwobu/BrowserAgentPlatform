@@ -33,7 +33,11 @@ public class ProfilesController : ControllerBase
             ProxyId = request.ProxyId,
             FingerprintTemplateId = request.FingerprintTemplateId,
             LocalProfilePath = request.LocalProfilePath,
-            StartupArgsJson = request.StartupArgsJson
+            StorageRootPath = request.StorageRootPath,
+            DownloadRootPath = request.DownloadRootPath,
+            StartupArgsJson = request.StartupArgsJson,
+            IsolationPolicyJson = request.IsolationPolicyJson,
+            IsolationLevel = request.IsolationLevel
         };
         _db.BrowserProfiles.Add(profile);
         await _db.SaveChangesAsync();
@@ -51,7 +55,11 @@ public class ProfilesController : ControllerBase
         profile.ProxyId = request.ProxyId;
         profile.FingerprintTemplateId = request.FingerprintTemplateId;
         profile.LocalProfilePath = request.LocalProfilePath;
+        profile.StorageRootPath = request.StorageRootPath;
+        profile.DownloadRootPath = request.DownloadRootPath;
         profile.StartupArgsJson = request.StartupArgsJson;
+        profile.IsolationPolicyJson = request.IsolationPolicyJson;
+        profile.IsolationLevel = request.IsolationLevel;
         await _db.SaveChangesAsync();
         return Ok(profile);
     }
