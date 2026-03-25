@@ -190,6 +190,64 @@ public static class DbSeeder
             var isolatedProfile = await db.BrowserProfiles.FirstAsync(x => x.Name == "DEMO Profile Isolated");
             var standardProfile = await db.BrowserProfiles.FirstAsync(x => x.Name == "DEMO Profile Standard");
             var onlineAgent = await db.Agents.FirstOrDefaultAsync(x => x.AgentKey == "demo-agent-1") ?? firstAgent;
+            var queuedPayloadJson = """
+            {
+              "steps": [
+                { "id": "open", "type": "open", "data": { "label": "打开示例站点", "url": "https://example.com" } },
+                { "id": "wait", "type": "wait_for_timeout", "data": { "label": "等待页面稳定", "timeout": 1200 } },
+                { "id": "done", "type": "end_success", "data": { "label": "结束" } }
+              ],
+              "edges": [
+                { "source": "open", "target": "wait" },
+                { "source": "wait", "target": "done" }
+              ]
+            }
+            """;
+            var completedPayloadJson = """
+            {
+              "steps": [
+                { "id": "open", "type": "open", "data": { "label": "打开 HTTPBin", "url": "https://httpbin.org/get" } },
+                { "id": "extract", "type": "extract_text", "data": { "label": "提取页面标题", "selector": "body" } },
+                { "id": "done", "type": "end_success", "data": { "label": "结束" } }
+              ],
+              "edges": [
+                { "source": "open", "target": "extract" },
+                { "source": "extract", "target": "done" }
+              ]
+            }
+            """;
+            var failedPayloadJson = """
+            {
+              "steps": [
+                { "id": "open", "type": "open", "data": { "label": "打开不可达域名", "url": "https://invalid.domain.example" } },
+                { "id": "done", "type": "end_fail", "data": { "label": "结束失败" } }
+              ],
+              "edges": [
+                { "source": "open", "target": "done" }
+              ]
+            }
+            """;
+            var baiduPayloadJson = """
+            {
+              "steps": [
+                { "id": "step_open", "type": "open", "data": { "label": "打开百度首页", "url": "https://www.baidu.com" } },
+                { "id": "step_wait_input", "type": "wait_for_element", "data": { "label": "等待搜索输入框", "selector": "#kw", "timeout": 15000 } },
+                { "id": "step_type_keyword", "type": "type", "data": { "label": "输入关键词", "selector": "#kw", "value": "BrowserAgentPlatform 自动化测试" } },
+                { "id": "step_click_search", "type": "click", "data": { "label": "点击搜索按钮", "selector": "#su" } },
+                { "id": "step_wait_result", "type": "wait_for_element", "data": { "label": "等待结果区域", "selector": "#content_left", "timeout": 15000 } },
+                { "id": "step_extract_title", "type": "extract_text", "data": { "label": "提取首条结果标题", "selector": "#content_left h3" } },
+                { "id": "step_done", "type": "end_success", "data": { "label": "完成" } }
+              ],
+              "edges": [
+                { "source": "step_open", "target": "step_wait_input" },
+                { "source": "step_wait_input", "target": "step_type_keyword" },
+                { "source": "step_type_keyword", "target": "step_click_search" },
+                { "source": "step_click_search", "target": "step_wait_result" },
+                { "source": "step_wait_result", "target": "step_extract_title" },
+                { "source": "step_extract_title", "target": "step_done" }
+              ]
+            }
+            """;
 
             var queuedTask = new WorkflowTask
             {
@@ -198,7 +256,7 @@ public static class DbSeeder
                 SchedulingStrategy = "preferred_agent",
                 PreferredAgentId = onlineAgent.Id,
                 Status = "queued",
-                PayloadJson = "{\"steps\":[{\"id\":\"open\",\"type\":\"open\",\"url\":\"https://example.com\"}]}",
+                PayloadJson = queuedPayloadJson,
                 RetryPolicyJson = "{\"maxRetries\":1}",
                 Priority = 200,
                 TimeoutSeconds = 300
@@ -210,7 +268,7 @@ public static class DbSeeder
                 BrowserProfileId = standardProfile.Id,
                 SchedulingStrategy = "least_loaded",
                 Status = "completed",
-                PayloadJson = "{\"steps\":[{\"id\":\"open\",\"type\":\"open\",\"url\":\"https://httpbin.org/get\"}]}",
+                PayloadJson = completedPayloadJson,
                 RetryPolicyJson = "{\"maxRetries\":0}",
                 Priority = 100,
                 TimeoutSeconds = 180
@@ -222,13 +280,25 @@ public static class DbSeeder
                 BrowserProfileId = isolatedProfile.Id,
                 SchedulingStrategy = "profile_owner",
                 Status = "failed",
-                PayloadJson = "{\"steps\":[{\"id\":\"open\",\"type\":\"open\",\"url\":\"https://invalid.domain.example\"}]}",
+                PayloadJson = failedPayloadJson,
                 RetryPolicyJson = "{\"maxRetries\":2}",
                 Priority = 80,
                 TimeoutSeconds = 120
             };
 
-            db.Tasks.AddRange(queuedTask, completedTask, failedTask);
+            var baiduTask = new WorkflowTask
+            {
+                Name = "DEMO Task Baidu Search",
+                BrowserProfileId = standardProfile.Id,
+                SchedulingStrategy = "profile_owner",
+                Status = "queued",
+                PayloadJson = baiduPayloadJson,
+                RetryPolicyJson = "{\"maxRetries\":1}",
+                Priority = 220,
+                TimeoutSeconds = 240
+            };
+
+            db.Tasks.AddRange(queuedTask, completedTask, failedTask, baiduTask);
             await db.SaveChangesAsync();
 
             var now = DateTime.UtcNow;

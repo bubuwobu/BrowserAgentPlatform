@@ -88,6 +88,7 @@
               <div class="muted" style="margin-top:8px;">task={{ run.taskId }} / profile={{ run.browserProfileId }}</div>
               <div class="muted">step={{ run.currentStepLabel || '-' }}</div>
               <div class="muted">url={{ run.currentUrl || '-' }}</div>
+              <div class="muted">result={{ run.resultJson || '-' }}</div>
             </div>
             <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
           </div>
