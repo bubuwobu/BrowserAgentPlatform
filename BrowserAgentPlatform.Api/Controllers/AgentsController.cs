@@ -18,20 +18,34 @@ public class AgentsController : ControllerBase
     private readonly ArtifactService _artifactService;
     private readonly LiveHubNotifier _notifier;
     private readonly IsolationPolicyService _isolationPolicyService;
+    private readonly AgentRequestSecurityService _agentRequestSecurityService;
+    private readonly AuditService _auditService;
 
-    public AgentsController(AppDbContext db, SchedulerService scheduler, ArtifactService artifactService, LiveHubNotifier notifier, IsolationPolicyService isolationPolicyService)
+    public AgentsController(
+        AppDbContext db,
+        SchedulerService scheduler,
+        ArtifactService artifactService,
+        LiveHubNotifier notifier,
+        IsolationPolicyService isolationPolicyService,
+        AgentRequestSecurityService agentRequestSecurityService,
+        AuditService auditService)
     {
         _db = db;
         _scheduler = scheduler;
         _artifactService = artifactService;
         _notifier = notifier;
         _isolationPolicyService = isolationPolicyService;
+        _agentRequestSecurityService = agentRequestSecurityService;
+        _auditService = auditService;
     }
 
     [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> Register(AgentRegisterRequest request)
     {
+        var security = _agentRequestSecurityService.Validate(HttpContext.Request, request.AgentKey);
+        if (!security.ok) return Unauthorized(new { ok = false, message = security.reason });
+
         var agent = await _db.Agents.FirstOrDefaultAsync(x => x.AgentKey == request.AgentKey);
         if (agent is null)
         {
@@ -57,6 +71,7 @@ public class AgentsController : ControllerBase
             agent.LastHeartbeatAt = DateTime.UtcNow;
         }
         await _db.SaveChangesAsync();
+        await _auditService.WriteAsync("agent_register", "agent", request.AgentKey, "agent", agent.Id.ToString(), $"{{\"machine\":\"{request.MachineName}\"}}");
         return Ok(agent);
     }
 
@@ -64,6 +79,9 @@ public class AgentsController : ControllerBase
     [HttpPost("heartbeat")]
     public async Task<IActionResult> Heartbeat(AgentHeartbeatRequest request)
     {
+        var security = _agentRequestSecurityService.Validate(HttpContext.Request, request.AgentKey);
+        if (!security.ok) return Unauthorized(new { ok = false, message = security.reason });
+
         var agent = await _db.Agents.FirstOrDefaultAsync(x => x.AgentKey == request.AgentKey);
         if (agent is null) return NotFound();
         agent.Status = "online";
@@ -84,6 +102,9 @@ public class AgentsController : ControllerBase
     [HttpPost("pull/{agentKey}")]
     public async Task<IActionResult> Pull(string agentKey)
     {
+        var security = _agentRequestSecurityService.Validate(HttpContext.Request, agentKey);
+        if (!security.ok) return Unauthorized(new { ok = false, message = security.reason });
+
         var result = await _scheduler.LeaseNextRunForAgentAsync(agentKey);
         if (result is null) return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
 
@@ -95,6 +116,7 @@ public class AgentsController : ControllerBase
             result.Value.run.ErrorMessage = "Profile not found during pull.";
             await _db.SaveChangesAsync();
             await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+            await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), "{\"reason\":\"missing_profile\"}");
             return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
         }
 
@@ -113,12 +135,14 @@ public class AgentsController : ControllerBase
             });
             await _db.SaveChangesAsync();
             await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+            await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), $"{{\"reason\":\"isolation_validation_failed\",\"errors\":{JsonSerializer.Serialize(check.Errors)}}}");
             return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
         }
 
         profile.LastIsolationCheckAt = DateTime.UtcNow;
         profile.RuntimeMetaJson = check.EffectivePolicyJson;
         await _db.SaveChangesAsync();
+        await _auditService.WriteAsync("run_pulled", "agent", agentKey, "task_run", result.Value.run.Id.ToString());
 
         return Ok(new AgentPullResponse(
             result.Value.run.Id,
@@ -136,6 +160,10 @@ public class AgentsController : ControllerBase
     [HttpPost("report-progress")]
     public async Task<IActionResult> ReportProgress(AgentProgressRequest request)
     {
+        var requestAgentKey = HttpContext.Request.Headers["x-agent-key"].FirstOrDefault() ?? "";
+        var security = _agentRequestSecurityService.Validate(HttpContext.Request, requestAgentKey);
+        if (!security.ok) return Unauthorized(new { ok = false, message = security.reason });
+
         var run = await _db.TaskRuns.FindAsync(request.TaskRunId);
         if (run is null) return NotFound();
         if (string.IsNullOrWhiteSpace(request.LeaseToken) || request.LeaseToken != run.LeaseToken)
@@ -176,6 +204,7 @@ public class AgentsController : ControllerBase
 
         var refreshed = await _scheduler.RefreshLeaseAsync(run.Id, request.LeaseToken);
         if (!refreshed) return Conflict(new { ok = false, message = "lease expired" });
+        await _auditService.WriteAsync("run_progress", "agent", requestAgentKey, "task_run", run.Id.ToString(), $"{{\"status\":\"{run.Status}\",\"step\":\"{run.CurrentStepId}\"}}");
         return Ok(new { ok = true });
     }
 
@@ -183,6 +212,10 @@ public class AgentsController : ControllerBase
     [HttpPost("report-complete")]
     public async Task<IActionResult> ReportComplete(AgentCompleteRequest request)
     {
+        var requestAgentKey = HttpContext.Request.Headers["x-agent-key"].FirstOrDefault() ?? "";
+        var security = _agentRequestSecurityService.Validate(HttpContext.Request, requestAgentKey);
+        if (!security.ok) return Unauthorized(new { ok = false, message = security.reason });
+
         var run = await _db.TaskRuns.FindAsync(request.TaskRunId);
         if (run is null) return NotFound();
         if (string.IsNullOrWhiteSpace(request.LeaseToken) || request.LeaseToken != run.LeaseToken)
@@ -243,6 +276,7 @@ public class AgentsController : ControllerBase
         await _db.SaveChangesAsync();
         await _scheduler.ReleaseRunAsync(run.Id);
         await _notifier.PublishRunUpdateAsync(run.Id, new { run.Id, run.Status, run.LastPreviewPath, completed = true });
+        await _auditService.WriteAsync("run_complete", "agent", requestAgentKey, "task_run", run.Id.ToString(), $"{{\"status\":\"{run.Status}\"}}");
         return Ok(new { ok = true });
     }
 

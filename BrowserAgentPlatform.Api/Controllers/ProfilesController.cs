@@ -16,10 +16,12 @@ public class ProfilesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IsolationPolicyService _isolationPolicyService;
-    public ProfilesController(AppDbContext db, IsolationPolicyService isolationPolicyService)
+    private readonly AuditService _auditService;
+    public ProfilesController(AppDbContext db, IsolationPolicyService isolationPolicyService, AuditService auditService)
     {
         _db = db;
         _isolationPolicyService = isolationPolicyService;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -85,6 +87,7 @@ public class ProfilesController : ControllerBase
             PayloadJson = $"{{\"profileId\":{profile.Id}}}"
         });
         await _db.SaveChangesAsync();
+        await _auditService.WriteAsync("profile_test_open", "user", User.Identity?.Name ?? "unknown", "profile", profile.Id.ToString());
         return Ok(new { ok = true });
     }
 
@@ -103,6 +106,7 @@ public class ProfilesController : ControllerBase
             PayloadJson = $"{{\"profileId\":{profile.Id},\"headed\":{request.Headed.ToString().ToLowerInvariant()}}}"
         });
         await _db.SaveChangesAsync();
+        await _auditService.WriteAsync("profile_takeover", "user", User.Identity?.Name ?? "unknown", "profile", profile.Id.ToString(), $"{{\"headed\":{request.Headed.ToString().ToLowerInvariant()}}}");
         return Ok(new { ok = true });
     }
 
@@ -114,6 +118,7 @@ public class ProfilesController : ControllerBase
         var profile = await _db.BrowserProfiles.FindAsync(id);
         if (profile is not null) profile.Status = "idle";
         await _db.SaveChangesAsync();
+        await _auditService.WriteAsync("profile_unlock", "user", User.Identity?.Name ?? "unknown", "profile", id.ToString(), $"{{\"released\":{locks.Count}}}");
         return Ok(new { ok = true, released = locks.Count });
     }
 
@@ -136,6 +141,7 @@ public class ProfilesController : ControllerBase
             }
         });
         await _db.SaveChangesAsync(cancellationToken);
+        await _auditService.WriteAsync("profile_isolation_check", "user", User.Identity?.Name ?? "unknown", "profile", profile.Id.ToString(), JsonSerializer.Serialize(new { result.Ok, result.Errors, result.Warnings }), cancellationToken);
 
         return Ok(new
         {

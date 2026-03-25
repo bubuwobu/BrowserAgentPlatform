@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<BrowserArtifact> BrowserArtifacts => Set<BrowserArtifact>();
     public DbSet<AgentCommand> AgentCommands => Set<AgentCommand>();
     public DbSet<RunIsolationReport> RunIsolationReports => Set<RunIsolationReport>();
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -233,6 +234,23 @@ public class AppDbContext : DbContext
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
 
             entity.HasIndex(x => x.TaskRunId);
+        });
+
+        modelBuilder.Entity<AuditEvent>(entity =>
+        {
+            entity.ToTable("audit_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.EventType).HasColumnName("event_type");
+            entity.Property(x => x.ActorType).HasColumnName("actor_type");
+            entity.Property(x => x.ActorId).HasColumnName("actor_id");
+            entity.Property(x => x.TargetType).HasColumnName("target_type");
+            entity.Property(x => x.TargetId).HasColumnName("target_id");
+            entity.Property(x => x.DetailsJson).HasColumnName("details_json").HasColumnType("longtext");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+
+            entity.HasIndex(x => new { x.EventType, x.CreatedAt });
+            entity.HasIndex(x => new { x.ActorType, x.ActorId, x.CreatedAt });
         });
     }
 }
