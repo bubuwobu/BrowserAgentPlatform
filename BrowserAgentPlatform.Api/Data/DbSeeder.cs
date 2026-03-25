@@ -35,113 +35,130 @@ public static class DbSeeder
             });
         }
 
-        if (!await db.Agents.AnyAsync())
+        var demoAgent1 = await db.Agents.FirstOrDefaultAsync(x => x.AgentKey == "demo-agent-1");
+        if (demoAgent1 is null)
         {
-            db.Agents.AddRange(
-                new AgentNode
-                {
-                    AgentKey = "demo-agent-1",
-                    Name = "Demo Agent 1",
-                    MachineName = "demo-machine-1",
-                    Status = "online",
-                    MaxParallelRuns = 2,
-                    CurrentRuns = 0,
-                    SchedulerTags = "demo,default",
-                    LastHeartbeatAt = DateTime.UtcNow.AddSeconds(-10)
-                },
-                new AgentNode
-                {
-                    AgentKey = "demo-agent-2",
-                    Name = "Demo Agent 2",
-                    MachineName = "demo-machine-2",
-                    Status = "offline",
-                    MaxParallelRuns = 1,
-                    CurrentRuns = 0,
-                    SchedulerTags = "demo,backup",
-                    LastHeartbeatAt = DateTime.UtcNow.AddMinutes(-30)
-                }
-            );
+            demoAgent1 = new AgentNode
+            {
+                AgentKey = "demo-agent-1",
+                Name = "Demo Agent 1",
+                MachineName = "demo-machine-1",
+                Status = "online",
+                MaxParallelRuns = 2,
+                CurrentRuns = 0,
+                SchedulerTags = "demo,default",
+                LastHeartbeatAt = DateTime.UtcNow.AddSeconds(-10)
+            };
+            db.Agents.Add(demoAgent1);
         }
 
-        if (!await db.Proxies.AnyAsync())
+        var demoAgent2 = await db.Agents.FirstOrDefaultAsync(x => x.AgentKey == "demo-agent-2");
+        if (demoAgent2 is null)
         {
-            db.Proxies.AddRange(
-                new ProxyConfig
-                {
-                    Name = "Demo NoAuth Proxy",
-                    Protocol = "http",
-                    Host = "127.0.0.1",
-                    Port = 8080,
-                    Notes = "Local demo proxy for UI testing"
-                },
-                new ProxyConfig
-                {
-                    Name = "Demo Auth Proxy",
-                    Protocol = "socks5",
-                    Host = "127.0.0.1",
-                    Port = 1080,
-                    Username = "demo_user",
-                    Password = "demo_pass",
-                    Notes = "Authenticated demo proxy"
-                }
-            );
+            demoAgent2 = new AgentNode
+            {
+                AgentKey = "demo-agent-2",
+                Name = "Demo Agent 2",
+                MachineName = "demo-machine-2",
+                Status = "offline",
+                MaxParallelRuns = 1,
+                CurrentRuns = 0,
+                SchedulerTags = "demo,backup",
+                LastHeartbeatAt = DateTime.UtcNow.AddMinutes(-30)
+            };
+            db.Agents.Add(demoAgent2);
+        }
+
+        var demoProxyNoAuth = await db.Proxies.FirstOrDefaultAsync(x => x.Name == "Demo NoAuth Proxy");
+        if (demoProxyNoAuth is null)
+        {
+            demoProxyNoAuth = new ProxyConfig
+            {
+                Name = "Demo NoAuth Proxy",
+                Protocol = "http",
+                Host = "127.0.0.1",
+                Port = 8080,
+                Notes = "Local demo proxy for UI testing"
+            };
+            db.Proxies.Add(demoProxyNoAuth);
+        }
+
+        var demoProxyAuth = await db.Proxies.FirstOrDefaultAsync(x => x.Name == "Demo Auth Proxy");
+        if (demoProxyAuth is null)
+        {
+            demoProxyAuth = new ProxyConfig
+            {
+                Name = "Demo Auth Proxy",
+                Protocol = "socks5",
+                Host = "127.0.0.1",
+                Port = 1080,
+                Username = "demo_user",
+                Password = "demo_pass",
+                Notes = "Authenticated demo proxy"
+            };
+            db.Proxies.Add(demoProxyAuth);
         }
 
         await db.SaveChangesAsync();
 
-        // Seed demo profiles/tasks/runs only once (idempotent by fixed demo names).
-        var hasDemoProfiles = await db.BrowserProfiles.AnyAsync(x => x.Name.StartsWith("DEMO Profile "));
-        if (!hasDemoProfiles)
-        {
-            var defaultFingerprint = await db.FingerprintTemplates.OrderBy(x => x.Id).FirstAsync();
-            var firstAgent = await db.Agents.OrderBy(x => x.Id).FirstAsync();
-            var firstProxy = await db.Proxies.OrderBy(x => x.Id).FirstOrDefaultAsync();
+        var defaultFingerprint = await db.FingerprintTemplates.OrderBy(x => x.Id).FirstAsync();
+        var firstAgent = await db.Agents.OrderBy(x => x.Id).FirstAsync();
+        var firstProxy = await db.Proxies.OrderBy(x => x.Id).FirstOrDefaultAsync();
 
-            db.BrowserProfiles.AddRange(
-                new BrowserProfile
-                {
-                    Name = "DEMO Profile Isolated",
-                    OwnerAgentId = firstAgent.Id,
-                    ProxyId = firstProxy?.Id,
-                    FingerprintTemplateId = defaultFingerprint.Id,
-                    Status = "idle",
-                    IsolationLevel = "strict",
-                    LocalProfilePath = "/tmp/bap/demo/profile-isolated",
-                    StorageRootPath = "/tmp/bap/demo/storage-isolated",
-                    DownloadRootPath = "/tmp/bap/demo/download-isolated",
-                    StartupArgsJson = "[\"--start-maximized\"]",
-                    IsolationPolicyJson = "{\"timezone\":\"Asia/Shanghai\",\"locale\":\"zh-CN\",\"webrtc\":\"disabled\"}",
-                    RuntimeMetaJson = "{}",
-                    LastIsolationCheckAt = DateTime.UtcNow.AddMinutes(-15),
-                    LastUsedAt = DateTime.UtcNow.AddHours(-3)
-                },
-                new BrowserProfile
-                {
-                    Name = "DEMO Profile Standard",
-                    OwnerAgentId = null,
-                    ProxyId = null,
-                    FingerprintTemplateId = defaultFingerprint.Id,
-                    Status = "idle",
-                    IsolationLevel = "standard",
-                    LocalProfilePath = "/tmp/bap/demo/profile-standard",
-                    StorageRootPath = "/tmp/bap/demo/storage-standard",
-                    DownloadRootPath = "/tmp/bap/demo/download-standard",
-                    StartupArgsJson = "[]",
-                    IsolationPolicyJson = "{\"timezone\":\"UTC\",\"locale\":\"en-US\"}",
-                    RuntimeMetaJson = "{}",
-                    LastIsolationCheckAt = DateTime.UtcNow.AddHours(-1),
-                    LastUsedAt = DateTime.UtcNow.AddHours(-1)
-                }
-            );
-            await db.SaveChangesAsync();
+        var demoProfileIsolated = await db.BrowserProfiles.FirstOrDefaultAsync(x => x.Name == "DEMO Profile Isolated");
+        if (demoProfileIsolated is null)
+        {
+            demoProfileIsolated = new BrowserProfile
+            {
+                Name = "DEMO Profile Isolated",
+                OwnerAgentId = firstAgent.Id,
+                ProxyId = firstProxy?.Id,
+                FingerprintTemplateId = defaultFingerprint.Id,
+                Status = "idle",
+                IsolationLevel = "strict",
+                LocalProfilePath = "/tmp/bap/demo/profile-isolated",
+                StorageRootPath = "/tmp/bap/demo/storage-isolated",
+                DownloadRootPath = "/tmp/bap/demo/download-isolated",
+                StartupArgsJson = "[\"--start-maximized\"]",
+                IsolationPolicyJson = "{\"timezone\":\"Asia/Shanghai\",\"locale\":\"zh-CN\",\"webrtc\":\"disabled\"}",
+                RuntimeMetaJson = "{}",
+                LastIsolationCheckAt = DateTime.UtcNow.AddMinutes(-15),
+                LastUsedAt = DateTime.UtcNow.AddHours(-3)
+            };
+            db.BrowserProfiles.Add(demoProfileIsolated);
         }
+
+        var demoProfileStandard = await db.BrowserProfiles.FirstOrDefaultAsync(x => x.Name == "DEMO Profile Standard");
+        if (demoProfileStandard is null)
+        {
+            demoProfileStandard = new BrowserProfile
+            {
+                Name = "DEMO Profile Standard",
+                OwnerAgentId = null,
+                ProxyId = null,
+                FingerprintTemplateId = defaultFingerprint.Id,
+                Status = "idle",
+                IsolationLevel = "standard",
+                LocalProfilePath = "/tmp/bap/demo/profile-standard",
+                StorageRootPath = "/tmp/bap/demo/storage-standard",
+                DownloadRootPath = "/tmp/bap/demo/download-standard",
+                StartupArgsJson = "[]",
+                IsolationPolicyJson = "{\"timezone\":\"UTC\",\"locale\":\"en-US\"}",
+                RuntimeMetaJson = "{}",
+                LastIsolationCheckAt = DateTime.UtcNow.AddHours(-1),
+                LastUsedAt = DateTime.UtcNow.AddHours(-1)
+            };
+            db.BrowserProfiles.Add(demoProfileStandard);
+        }
+
+        await db.SaveChangesAsync();
 
         var hasDemoTasks = await db.Tasks.AnyAsync(x => x.Name.StartsWith("DEMO Task "));
         if (!hasDemoTasks)
         {
             var isolatedProfile = await db.BrowserProfiles.FirstAsync(x => x.Name == "DEMO Profile Isolated");
             var standardProfile = await db.BrowserProfiles.FirstAsync(x => x.Name == "DEMO Profile Standard");
-            var onlineAgent = await db.Agents.FirstAsync(x => x.AgentKey == "demo-agent-1");
+            var onlineAgent = await db.Agents.FirstOrDefaultAsync(x => x.AgentKey == "demo-agent-1") ?? firstAgent;
 
             var queuedTask = new WorkflowTask
             {
