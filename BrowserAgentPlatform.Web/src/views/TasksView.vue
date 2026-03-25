@@ -203,7 +203,9 @@ async function save() {
       schedulingStrategy: form.schedulingStrategy,
       preferredAgentId: form.preferredAgentId,
       priority: form.priority,
-      payloadJson: form.payloadJson
+      payloadJson: form.payloadJson,
+      timeoutSeconds: 300,
+      retryPolicyJson: '{"maxRetries":1}'
     })
     message.value = '任务已创建'
     form.name = ''

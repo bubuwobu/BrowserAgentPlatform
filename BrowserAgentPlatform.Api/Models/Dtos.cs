@@ -13,7 +13,7 @@ public record ProxyUpsertRequest(string Name, string Protocol, string Host, int 
 public record FingerprintTemplateRequest(string Name, string ConfigJson);
 public record BrowserProfileRequest(string Name, long? OwnerAgentId, long? ProxyId, long? FingerprintTemplateId, string LocalProfilePath, string StorageRootPath, string DownloadRootPath, string StartupArgsJson, string IsolationPolicyJson, string IsolationLevel);
 public record TaskTemplateRequest(string Name, string DefinitionJson);
-public record WorkflowTaskRequest(string Name, long BrowserProfileId, string SchedulingStrategy, long? PreferredAgentId, string PayloadJson, int Priority, int TimeoutSeconds, string RetryPolicyJson);
+public record WorkflowTaskRequest(string? Name, long BrowserProfileId, string? SchedulingStrategy, long? PreferredAgentId, string? PayloadJson, int Priority, int? TimeoutSeconds, string? RetryPolicyJson);
 public record ClosedLoopStartRequest(long ProfileId, string AgentKey, string? TaskName, string? PayloadJson);
 public record ClosedLoopExecuteRequest(long RunId, string AgentKey);
 

@@ -53,26 +53,27 @@ public class TasksController : ControllerBase
             return BadRequest($"BrowserProfile 不存在：{request.BrowserProfileId}");
         }
 
-        if (request.SchedulingStrategy == "preferred_agent" && !request.PreferredAgentId.HasValue)
+        var schedulingStrategy = string.IsNullOrWhiteSpace(request.SchedulingStrategy) ? "least_loaded" : request.SchedulingStrategy;
+        if (schedulingStrategy == "preferred_agent" && !request.PreferredAgentId.HasValue)
         {
             return BadRequest("schedulingStrategy=preferred_agent 时必须选择 preferredAgent。");
         }
 
-        if (request.SchedulingStrategy == "profile_owner" && !profile.OwnerAgentId.HasValue)
+        if (schedulingStrategy == "profile_owner" && !profile.OwnerAgentId.HasValue)
         {
             return BadRequest("当前 Profile 未绑定 OwnerAgent，不能使用 profile_owner 策略。可改为 least_loaded 或先绑定 OwnerAgent。");
         }
 
         var task = new WorkflowTask
         {
-            Name = request.Name,
+            Name = request.Name ?? "未命名任务",
             BrowserProfileId = request.BrowserProfileId,
-            SchedulingStrategy = request.SchedulingStrategy,
+            SchedulingStrategy = schedulingStrategy,
             PreferredAgentId = request.PreferredAgentId,
-            PayloadJson = request.PayloadJson,
+            PayloadJson = string.IsNullOrWhiteSpace(request.PayloadJson) ? "{}" : request.PayloadJson,
             Priority = request.Priority,
-            TimeoutSeconds = request.TimeoutSeconds,
-            RetryPolicyJson = request.RetryPolicyJson,
+            TimeoutSeconds = request.TimeoutSeconds.GetValueOrDefault(300) <= 0 ? 300 : request.TimeoutSeconds.Value,
+            RetryPolicyJson = string.IsNullOrWhiteSpace(request.RetryPolicyJson) ? "{\"maxRetries\":1}" : request.RetryPolicyJson,
             Status = "queued"
         };
         _db.Tasks.Add(task);
