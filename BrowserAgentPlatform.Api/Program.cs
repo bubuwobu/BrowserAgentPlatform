@@ -80,6 +80,7 @@ builder.Services.AddScoped<LiveHubNotifier>();
 builder.Services.AddScoped<IsolationPolicyService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ObservabilityService>();
+builder.Services.AddScoped<ClosedLoopValidationService>();
 builder.Services.AddSingleton<AgentRequestSecurityService>();
 builder.Services.AddHostedService<QueueScanBackgroundService>();
 builder.Services.AddHostedService<LeaseReaperBackgroundService>();
