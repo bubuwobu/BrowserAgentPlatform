@@ -17,13 +17,15 @@ public class AgentsController : ControllerBase
     private readonly SchedulerService _scheduler;
     private readonly ArtifactService _artifactService;
     private readonly LiveHubNotifier _notifier;
+    private readonly IsolationPolicyService _isolationPolicyService;
 
-    public AgentsController(AppDbContext db, SchedulerService scheduler, ArtifactService artifactService, LiveHubNotifier notifier)
+    public AgentsController(AppDbContext db, SchedulerService scheduler, ArtifactService artifactService, LiveHubNotifier notifier, IsolationPolicyService isolationPolicyService)
     {
         _db = db;
         _scheduler = scheduler;
         _artifactService = artifactService;
         _notifier = notifier;
+        _isolationPolicyService = isolationPolicyService;
     }
 
     [AllowAnonymous]
@@ -86,6 +88,38 @@ public class AgentsController : ControllerBase
         if (result is null) return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
 
         var profile = await _db.BrowserProfiles.FindAsync(result.Value.run.BrowserProfileId);
+        if (profile is null)
+        {
+            result.Value.run.Status = "failed";
+            result.Value.run.ErrorCode = "missing_profile";
+            result.Value.run.ErrorMessage = "Profile not found during pull.";
+            await _db.SaveChangesAsync();
+            await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+            return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
+        }
+
+        var check = await _isolationPolicyService.CheckProfileAsync(profile);
+        if (!check.Ok)
+        {
+            result.Value.run.Status = "failed";
+            result.Value.run.ErrorCode = "isolation_validation_failed";
+            result.Value.run.ErrorMessage = string.Join("; ", check.Errors);
+            _db.TaskRunLogs.Add(new TaskRunLog
+            {
+                TaskRunId = result.Value.run.Id,
+                Level = "error",
+                StepId = "isolation_check",
+                Message = result.Value.run.ErrorMessage
+            });
+            await _db.SaveChangesAsync();
+            await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+            return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
+        }
+
+        profile.LastIsolationCheckAt = DateTime.UtcNow;
+        profile.RuntimeMetaJson = check.EffectivePolicyJson;
+        await _db.SaveChangesAsync();
+
         return Ok(new AgentPullResponse(
             result.Value.run.Id,
             result.Value.run.TaskId,
@@ -94,7 +128,7 @@ public class AgentsController : ControllerBase
             result.Value.task.PayloadJson,
             result.Value.task.TimeoutSeconds,
             result.Value.task.RetryPolicyJson,
-            profile?.IsolationPolicyJson
+            check.EffectivePolicyJson
         ));
     }
 
@@ -178,21 +212,31 @@ public class AgentsController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(request.IsolationReportJson))
         {
-            var reportJson = request.IsolationReportJson;
-            using var doc = JsonDocument.Parse(reportJson);
+            using var doc = JsonDocument.Parse(request.IsolationReportJson);
             var root = doc.RootElement;
-            string GetStringOrDefault(string name, string fallback = "{}")
-                => root.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.String ? prop.GetString() ?? fallback : fallback;
+            string ReadJsonValueAsString(string name, string fallback = "{}")
+            {
+                if (!root.TryGetProperty(name, out var prop)) return fallback;
+                return prop.ValueKind switch
+                {
+                    JsonValueKind.String => prop.GetString() ?? fallback,
+                    JsonValueKind.Object or JsonValueKind.Array => prop.GetRawText(),
+                    JsonValueKind.True => "true",
+                    JsonValueKind.False => "false",
+                    JsonValueKind.Number => prop.GetRawText(),
+                    _ => fallback
+                };
+            }
 
             _db.RunIsolationReports.Add(new RunIsolationReport
             {
                 TaskRunId = run.Id,
                 BrowserProfileId = run.BrowserProfileId,
-                ProxySnapshotJson = GetStringOrDefault("proxySnapshotJson"),
-                FingerprintSnapshotJson = GetStringOrDefault("fingerprintSnapshotJson"),
-                StorageCheckJson = GetStringOrDefault("storageCheckJson"),
-                NetworkCheckJson = GetStringOrDefault("networkCheckJson"),
-                Result = GetStringOrDefault("result", "pass")
+                ProxySnapshotJson = ReadJsonValueAsString("proxySnapshotJson"),
+                FingerprintSnapshotJson = ReadJsonValueAsString("fingerprintSnapshotJson"),
+                StorageCheckJson = ReadJsonValueAsString("storageCheckJson"),
+                NetworkCheckJson = ReadJsonValueAsString("networkCheckJson"),
+                Result = ReadJsonValueAsString("result", "pass")
             });
         }
 

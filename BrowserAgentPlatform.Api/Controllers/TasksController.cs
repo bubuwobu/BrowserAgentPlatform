@@ -55,4 +55,14 @@ public class TasksController : ControllerBase
         var artifacts = await _db.BrowserArtifacts.Where(x => x.TaskRunId == runId).OrderByDescending(x => x.Id).ToListAsync();
         return Ok(new { run, logs, artifacts });
     }
+
+    [HttpGet("runs/{runId:long}/isolation-report")]
+    public async Task<IActionResult> IsolationReport(long runId)
+    {
+        var reports = await _db.RunIsolationReports
+            .Where(x => x.TaskRunId == runId)
+            .OrderByDescending(x => x.Id)
+            .ToListAsync();
+        return Ok(reports);
+    }
 }

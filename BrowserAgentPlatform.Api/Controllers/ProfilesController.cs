@@ -5,6 +5,7 @@ using BrowserAgentPlatform.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace BrowserAgentPlatform.Api.Controllers;
 
@@ -14,7 +15,12 @@ namespace BrowserAgentPlatform.Api.Controllers;
 public class ProfilesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public ProfilesController(AppDbContext db) => _db = db;
+    private readonly IsolationPolicyService _isolationPolicyService;
+    public ProfilesController(AppDbContext db, IsolationPolicyService isolationPolicyService)
+    {
+        _db = db;
+        _isolationPolicyService = isolationPolicyService;
+    }
 
     [HttpGet]
     public async Task<IActionResult> List()
@@ -109,5 +115,34 @@ public class ProfilesController : ControllerBase
         if (profile is not null) profile.Status = "idle";
         await _db.SaveChangesAsync();
         return Ok(new { ok = true, released = locks.Count });
+    }
+
+    [HttpPost("{id:long}/isolation-check")]
+    public async Task<IActionResult> IsolationCheck(long id, CancellationToken cancellationToken)
+    {
+        var profile = await _db.BrowserProfiles.FindAsync(new object?[] { id }, cancellationToken: cancellationToken);
+        if (profile is null) return NotFound();
+
+        var result = await _isolationPolicyService.CheckProfileAsync(profile, cancellationToken);
+        profile.LastIsolationCheckAt = DateTime.UtcNow;
+        profile.RuntimeMetaJson = JsonSerializer.Serialize(new
+        {
+            lastIsolationCheck = new
+            {
+                at = profile.LastIsolationCheckAt,
+                result.Ok,
+                result.Errors,
+                result.Warnings
+            }
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Ok(new
+        {
+            ok = result.Ok,
+            errors = result.Errors,
+            warnings = result.Warnings,
+            effectivePolicyJson = result.EffectivePolicyJson
+        });
     }
 }
