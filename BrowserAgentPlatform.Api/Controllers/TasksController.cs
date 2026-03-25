@@ -34,6 +34,8 @@ public class TasksController : ControllerBase
             PreferredAgentId = request.PreferredAgentId,
             PayloadJson = request.PayloadJson,
             Priority = request.Priority,
+            TimeoutSeconds = request.TimeoutSeconds,
+            RetryPolicyJson = request.RetryPolicyJson,
             Status = "queued"
         };
         _db.Tasks.Add(task);
@@ -52,5 +54,15 @@ public class TasksController : ControllerBase
         var logs = await _db.TaskRunLogs.Where(x => x.TaskRunId == runId).OrderBy(x => x.Id).ToListAsync();
         var artifacts = await _db.BrowserArtifacts.Where(x => x.TaskRunId == runId).OrderByDescending(x => x.Id).ToListAsync();
         return Ok(new { run, logs, artifacts });
+    }
+
+    [HttpGet("runs/{runId:long}/isolation-report")]
+    public async Task<IActionResult> IsolationReport(long runId)
+    {
+        var reports = await _db.RunIsolationReports
+            .Where(x => x.TaskRunId == runId)
+            .OrderByDescending(x => x.Id)
+            .ToListAsync();
+        return Ok(reports);
     }
 }
