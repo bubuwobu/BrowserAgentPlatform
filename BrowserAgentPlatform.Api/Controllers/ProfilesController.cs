@@ -27,7 +27,28 @@ public class ProfilesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
-        var profiles = await _db.BrowserProfiles.OrderByDescending(x => x.Id).ToListAsync();
+        var profiles = await _db.BrowserProfiles
+            .OrderByDescending(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                Name = x.Name ?? "",
+                x.OwnerAgentId,
+                x.ProxyId,
+                x.FingerprintTemplateId,
+                Status = x.Status ?? "idle",
+                IsolationLevel = x.IsolationLevel ?? "standard",
+                LocalProfilePath = x.LocalProfilePath ?? "",
+                StorageRootPath = x.StorageRootPath ?? "",
+                DownloadRootPath = x.DownloadRootPath ?? "",
+                StartupArgsJson = x.StartupArgsJson ?? "[]",
+                IsolationPolicyJson = x.IsolationPolicyJson ?? "{}",
+                RuntimeMetaJson = x.RuntimeMetaJson ?? "{}",
+                x.LastIsolationCheckAt,
+                x.LastUsedAt,
+                x.CreatedAt
+            })
+            .ToListAsync();
         return Ok(profiles);
     }
 
@@ -36,16 +57,16 @@ public class ProfilesController : ControllerBase
     {
         var profile = new BrowserProfile
         {
-            Name = request.Name,
+            Name = request.Name ?? "",
             OwnerAgentId = request.OwnerAgentId,
             ProxyId = request.ProxyId,
             FingerprintTemplateId = request.FingerprintTemplateId,
-            LocalProfilePath = request.LocalProfilePath,
-            StorageRootPath = request.StorageRootPath,
-            DownloadRootPath = request.DownloadRootPath,
-            StartupArgsJson = request.StartupArgsJson,
-            IsolationPolicyJson = request.IsolationPolicyJson,
-            IsolationLevel = request.IsolationLevel
+            LocalProfilePath = request.LocalProfilePath ?? "",
+            StorageRootPath = request.StorageRootPath ?? "",
+            DownloadRootPath = request.DownloadRootPath ?? "",
+            StartupArgsJson = request.StartupArgsJson ?? "[]",
+            IsolationPolicyJson = request.IsolationPolicyJson ?? "{}",
+            IsolationLevel = request.IsolationLevel ?? "standard"
         };
         _db.BrowserProfiles.Add(profile);
         await _db.SaveChangesAsync();
@@ -58,16 +79,16 @@ public class ProfilesController : ControllerBase
         var profile = await _db.BrowserProfiles.FindAsync(id);
         if (profile is null) return NotFound();
 
-        profile.Name = request.Name;
+        profile.Name = request.Name ?? "";
         profile.OwnerAgentId = request.OwnerAgentId;
         profile.ProxyId = request.ProxyId;
         profile.FingerprintTemplateId = request.FingerprintTemplateId;
-        profile.LocalProfilePath = request.LocalProfilePath;
-        profile.StorageRootPath = request.StorageRootPath;
-        profile.DownloadRootPath = request.DownloadRootPath;
-        profile.StartupArgsJson = request.StartupArgsJson;
-        profile.IsolationPolicyJson = request.IsolationPolicyJson;
-        profile.IsolationLevel = request.IsolationLevel;
+        profile.LocalProfilePath = request.LocalProfilePath ?? "";
+        profile.StorageRootPath = request.StorageRootPath ?? "";
+        profile.DownloadRootPath = request.DownloadRootPath ?? "";
+        profile.StartupArgsJson = request.StartupArgsJson ?? "[]";
+        profile.IsolationPolicyJson = request.IsolationPolicyJson ?? "{}";
+        profile.IsolationLevel = request.IsolationLevel ?? "standard";
         await _db.SaveChangesAsync();
         return Ok(profile);
     }
