@@ -136,8 +136,8 @@ function fillExample() {
   form.payloadJson = JSON.stringify({
     steps: [
       { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: 'https://www.baidu.com' } },
-      { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: '#kw', timeout: 15000 } },
-      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: '#kw', value: 'BrowserAgentPlatform 自动化测试' } },
+      { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: 'textarea[name=\"wd\"]', timeout: 15000 } },
+      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'textarea[name=\"wd\"]', value: 'BrowserAgentPlatform 自动化测试' } },
       { id: 'step_click_search', type: 'click', data: { label: '点击搜索按钮', selector: '#su' } },
       { id: 'step_wait_result', type: 'wait_for_element', data: { label: '等待结果区域', selector: '#content_left', timeout: 15000 } },
       { id: 'step_extract_title', type: 'extract_text', data: { label: '提取首条结果标题', selector: '#content_left h3' } },

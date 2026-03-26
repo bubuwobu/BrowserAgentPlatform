@@ -8,4 +8,5 @@ public class AgentOptions
     public int MaxParallelRuns { get; set; } = 1;
     public string SchedulerTags { get; set; } = "";
     public string ProfilesRoot { get; set; } = "data/profiles";
+    public bool RunHeaded { get; set; } = true;
 }

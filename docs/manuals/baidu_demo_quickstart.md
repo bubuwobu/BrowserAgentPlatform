@@ -18,6 +18,13 @@ SOURCE docs/sql/reset_to_baidu_demo.sql;
 2. 启动 Agent（`BrowserAgentPlatform.Agent`），并确保它连接的是同一个 API 地址。
 3. 启动 Web（`BrowserAgentPlatform.Web`）。
 
+> 说明：Agent 默认 `RunHeaded=true`，会看到真实浏览器窗口。若部署在无桌面环境服务器，请改为 `false`。
+> 首次运行如缺少 Playwright 浏览器，请先执行：
+>
+> ```bash
+> pwsh ./BrowserAgentPlatform.Agent/bin/Debug/net8.0/playwright.ps1 install chromium
+> ```
+
 ## 3) 检查是否具备执行条件
 
 在 Web 看以下三点：
@@ -31,6 +38,7 @@ SOURCE docs/sql/reset_to_baidu_demo.sql;
 1. Agent 是否在线、是否持续心跳。
 2. Agent 与 API 是否同库（最常见问题：连错数据库实例）。
 3. API 日志是否有 pull/progress/complete 请求。
+4. Agent 控制台是否出现 `report-progress failed` / `report-complete failed` 错误（会直接显示服务端拒绝原因）。
 
 建议直接查库：
 

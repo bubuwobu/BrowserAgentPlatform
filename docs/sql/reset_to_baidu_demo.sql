@@ -60,8 +60,8 @@ VALUES
     JSON_OBJECT(
         'steps', JSON_ARRAY(
             JSON_OBJECT('id','step_open','type','open','data',JSON_OBJECT('label','打开百度首页','url','https://www.baidu.com')),
-            JSON_OBJECT('id','step_wait_input','type','wait_for_element','data',JSON_OBJECT('label','等待搜索框','selector','#kw','timeout',15000)),
-            JSON_OBJECT('id','step_type_keyword','type','type','data',JSON_OBJECT('label','输入关键词','selector','#kw','value','BrowserAgentPlatform 自动化测试')),
+            JSON_OBJECT('id','step_wait_input','type','wait_for_element','data',JSON_OBJECT('label','等待搜索框','selector','textarea[name=\"wd\"]','timeout',15000)),
+            JSON_OBJECT('id','step_type_keyword','type','type','data',JSON_OBJECT('label','输入关键词','selector','textarea[name=\"wd\"]','value','BrowserAgentPlatform 自动化测试')),
             JSON_OBJECT('id','step_click_search','type','click','data',JSON_OBJECT('label','点击搜索','selector','#su')),
             JSON_OBJECT('id','step_wait_result','type','wait_for_element','data',JSON_OBJECT('label','等待结果区域','selector','#content_left','timeout',15000)),
             JSON_OBJECT('id','step_extract_title','type','extract_text','data',JSON_OBJECT('label','提取首条标题','selector','#content_left h3')),
