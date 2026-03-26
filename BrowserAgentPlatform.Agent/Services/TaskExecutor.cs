@@ -15,7 +15,7 @@ public class TaskExecutor
         _profiles = profiles;
     }
 
-    public async Task ExecuteAsync(long taskRunId, long profileId, string payloadJson)
+    public async Task ExecuteAsync(long taskRunId, long profileId, string leaseToken, string payloadJson)
     {
         string status = "completed";
         var result = new Dictionary<string, object?>();
@@ -52,7 +52,9 @@ public class TaskExecutor
                     CurrentStepLabel = label ?? currentId,
                     CurrentUrl = page.Url,
                     Message = $"Executing {type}",
-                    PreviewBase64 = await CaptureAsync(page)
+                    PreviewBase64 = await CaptureAsync(page),
+                    LeaseToken = leaseToken,
+                    HeartbeatAt = DateTime.UtcNow
                 });
 
                 switch (type)
@@ -117,7 +119,8 @@ public class TaskExecutor
                 TaskRunId = taskRunId,
                 Status = status,
                 ResultJson = JsonSerializer.Serialize(result),
-                FinalPreviewBase64 = await CaptureAsync(page)
+                FinalPreviewBase64 = await CaptureAsync(page),
+                LeaseToken = leaseToken
             });
         }
         catch (Exception ex)
@@ -126,7 +129,10 @@ public class TaskExecutor
             {
                 TaskRunId = taskRunId,
                 Status = "failed",
-                ResultJson = JsonSerializer.Serialize(new { error = ex.Message })
+                ResultJson = JsonSerializer.Serialize(new { error = ex.Message }),
+                LeaseToken = leaseToken,
+                ErrorCode = "executor_error",
+                ErrorMessage = ex.Message
             });
         }
     }

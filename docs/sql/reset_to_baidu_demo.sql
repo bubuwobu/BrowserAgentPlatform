@@ -24,15 +24,15 @@ SET FOREIGN_KEY_CHECKS = 1;
 INSERT INTO agents
     (agent_key, name, machine_name, status, max_parallel_runs, current_runs, scheduler_tags, last_heartbeat_at, created_at)
 SELECT
-    'local-agent-1', 'Local Agent', 'local-machine', 'online', 2, 0, '["default"]', UTC_TIMESTAMP(), UTC_TIMESTAMP()
-WHERE NOT EXISTS (SELECT 1 FROM agents WHERE agent_key = 'local-agent-1');
+    'agent-local-001', 'Local Agent', 'local-machine', 'online', 2, 0, '["default"]', UTC_TIMESTAMP(), UTC_TIMESTAMP()
+WHERE NOT EXISTS (SELECT 1 FROM agents WHERE agent_key = 'agent-local-001');
 
 UPDATE agents
 SET status = 'online',
     current_runs = 0,
     max_parallel_runs = CASE WHEN max_parallel_runs <= 0 THEN 1 ELSE max_parallel_runs END,
     last_heartbeat_at = UTC_TIMESTAMP()
-WHERE agent_key = 'local-agent-1';
+WHERE agent_key = 'agent-local-001';
 
 -- 3) 指纹模板 + 浏览器 profile（最小可运行）
 INSERT INTO fingerprint_templates (name, config_json, created_at)

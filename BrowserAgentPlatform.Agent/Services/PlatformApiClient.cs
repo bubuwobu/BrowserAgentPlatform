@@ -17,6 +17,10 @@ public class PlatformApiClient
         _http = http;
         _options = options.Value;
         _http.BaseAddress = new Uri(_options.ApiBaseUrl.TrimEnd('/') + "/");
+        if (!_http.DefaultRequestHeaders.Contains("x-agent-key"))
+        {
+            _http.DefaultRequestHeaders.Add("x-agent-key", _options.AgentKey);
+        }
     }
 
     public Task RegisterAsync() => _http.PostAsJsonAsync("api/agents/register", new AgentRegisterRequest
@@ -58,7 +62,23 @@ public class PlatformApiClient
         return await response.Content.ReadFromJsonAsync<AgentPullResponse>(_json);
     }
 
-    public Task ReportProgressAsync(AgentProgressRequest request) => _http.PostAsJsonAsync("api/agents/report-progress", request);
+    public async Task ReportProgressAsync(AgentProgressRequest request)
+    {
+        var response = await _http.PostAsJsonAsync("api/agents/report-progress", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"report-progress failed: {(int)response.StatusCode} {body}");
+        }
+    }
 
-    public Task ReportCompleteAsync(AgentCompleteRequest request) => _http.PostAsJsonAsync("api/agents/report-complete", request);
+    public async Task ReportCompleteAsync(AgentCompleteRequest request)
+    {
+        var response = await _http.PostAsJsonAsync("api/agents/report-complete", request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"report-complete failed: {(int)response.StatusCode} {body}");
+        }
+    }
 }
