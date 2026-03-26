@@ -10,16 +10,16 @@
         <input class="input" v-model="form.name" placeholder="任务名称" />
 
         <select class="input" v-model="form.browserProfileId">
-          <option :value="null">选择 BrowserProfile</option>
+          <option :value="null">请选择 BrowserProfile（必选）</option>
           <option v-for="item in profileOptions" :key="item.id" :value="item.id">
             {{ item.id }} - {{ item.name }}（{{ item.status }}）
           </option>
         </select>
 
         <select class="input" v-model="form.schedulingStrategy">
-          <option value="profile_owner">profile_owner</option>
+          <option value="least_loaded">least_loaded（推荐）</option>
+          <option value="profile_owner">profile_owner（需 Profile 绑定 owner）</option>
           <option value="preferred_agent">preferred_agent</option>
-          <option value="least_loaded">least_loaded</option>
         </select>
 
         <select class="input" v-model="form.preferredAgentId">
@@ -36,7 +36,15 @@
         <div class="section-actions">
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
           <button class="btn secondary" @click="fillExample">填充示例</button>
+          <button class="btn secondary" @click="fillTikTokExample">TikTok示例</button>
           <button class="btn secondary" @click="load">刷新</button>
+        </div>
+
+        <div class="muted">
+          * BrowserProfile 必选。<br />
+          * `least_loaded`：任意在线 Agent 都可执行（最不容易卡队列）。<br />
+          * `profile_owner`：仅 Profile 的 owner Agent 可执行。<br />
+          * `preferred_agent`：必须再选择 preferredAgent。
         </div>
 
         <div v-if="message" class="muted">{{ message }}</div>
@@ -88,6 +96,7 @@
               <div class="muted" style="margin-top:8px;">task={{ run.taskId }} / profile={{ run.browserProfileId }}</div>
               <div class="muted">step={{ run.currentStepLabel || '-' }}</div>
               <div class="muted">url={{ run.currentUrl || '-' }}</div>
+              <div class="muted">result={{ run.resultJson || '-' }}</div>
             </div>
             <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
           </div>
@@ -113,7 +122,7 @@ let timer = null
 const form = reactive({
   name: '',
   browserProfileId: null,
-  schedulingStrategy: 'profile_owner',
+  schedulingStrategy: 'least_loaded',
   preferredAgentId: null,
   priority: 100,
   payloadJson: '{}'
@@ -121,47 +130,116 @@ const form = reactive({
 
 const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
+const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
 
 function fillExample() {
-  form.name = '打开示例网站'
+  form.name = '百度搜索示例流程'
   form.payloadJson = JSON.stringify({
     steps: [
-      { id: 'step_open', type: 'open', label: '打开 example', url: 'https://example.com' },
-      { id: 'step_wait', type: 'wait_for_timeout', label: '等待', timeoutMs: 2000 },
-      { id: 'step_done', type: 'end_success', label: '结束' }
+      { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: 'https://www.baidu.com' } },
+      { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: 'textarea[name=\"wd\"]', timeout: 15000 } },
+      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'textarea[name=\"wd\"]', value: 'BrowserAgentPlatform 自动化测试' } },
+      { id: 'step_click_search', type: 'click', data: { label: '点击搜索按钮', selector: '#su' } },
+      { id: 'step_wait_result', type: 'wait_for_element', data: { label: '等待结果区域', selector: '#content_left', timeout: 15000 } },
+      { id: 'step_extract_title', type: 'extract_text', data: { label: '提取首条结果标题', selector: '#content_left h3' } },
+      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
+    ],
+    edges: [
+      { source: 'step_open', target: 'step_wait_input' },
+      { source: 'step_wait_input', target: 'step_type_keyword' },
+      { source: 'step_type_keyword', target: 'step_click_search' },
+      { source: 'step_click_search', target: 'step_wait_result' },
+      { source: 'step_wait_result', target: 'step_extract_title' },
+      { source: 'step_extract_title', target: 'step_done' }
     ]
   }, null, 2)
 }
 
+function fillTikTokExample() {
+  form.name = 'TikTok Mock 随机浏览点赞评论'
+  form.payloadJson = JSON.stringify({
+    steps: [
+      {
+        id: 'tiktok_session',
+        type: 'tiktok_mock_session',
+        data: {
+          label: '执行 TikTok Mock 自动化会话',
+          baseUrl: 'http://localhost:3001',
+          username: 'alice',
+          password: '123456',
+          minVideos: 3,
+          maxVideos: 8,
+          minWatchMs: 3000,
+          maxWatchMs: 9000,
+          minLikes: 1,
+          maxLikes: 4,
+          minComments: 1,
+          maxComments: 3
+        }
+      },
+      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
+    ],
+    edges: [{ source: 'tiktok_session', target: 'step_done' }]
+  }, null, 2)
+}
+
 async function load() {
-  const [taskList, runList, agentList, profileList] = await Promise.all([
+  const [taskRes, runRes, agentRes, profileRes] = await Promise.allSettled([
     api.tasks(),
     api.runs(),
     api.agents(),
     api.profiles()
   ])
-  tasks.value = taskList
-  runs.value = runList
-  agents.value = agentList
-  profiles.value = profileList
+
+  tasks.value = taskRes.status === 'fulfilled' ? taskRes.value : []
+  runs.value = runRes.status === 'fulfilled' ? runRes.value : []
+  agents.value = agentRes.status === 'fulfilled' ? agentRes.value : []
+  profiles.value = profileRes.status === 'fulfilled' ? profileRes.value : []
+
+  const errors = [taskRes, runRes, agentRes, profileRes]
+    .filter(item => item.status === 'rejected')
+    .map(item => item.reason?.message || '请求失败')
+
+  if (errors.length) {
+    message.value = `部分数据加载失败：${errors.join('；')}`
+  } else if (!saving.value) {
+    message.value = ''
+  }
 }
 
 async function save() {
   saving.value = true
   message.value = ''
   try {
+    if (!form.browserProfileId) {
+      message.value = '请先选择 BrowserProfile。'
+      return
+    }
+
+    if (form.schedulingStrategy === 'preferred_agent' && !form.preferredAgentId) {
+      message.value = '当前策略为 preferred_agent，请选择 preferredAgent。'
+      return
+    }
+
+    if (form.schedulingStrategy === 'profile_owner' && !selectedProfile.value?.ownerAgentId) {
+      message.value = '当前 Profile 没有 ownerAgent，不能用 profile_owner。请改为 least_loaded 或先绑定 owner。'
+      return
+    }
+
     await api.createTask({
       name: form.name,
       browserProfileId: form.browserProfileId,
       schedulingStrategy: form.schedulingStrategy,
       preferredAgentId: form.preferredAgentId,
       priority: form.priority,
-      payloadJson: form.payloadJson
+      payloadJson: form.payloadJson,
+      timeoutSeconds: 300,
+      retryPolicyJson: '{"maxRetries":1}'
     })
     message.value = '任务已创建'
     form.name = ''
     form.browserProfileId = null
-    form.schedulingStrategy = 'profile_owner'
+    form.schedulingStrategy = 'least_loaded'
     form.preferredAgentId = null
     form.priority = 100
     form.payloadJson = '{}'
