@@ -36,6 +36,7 @@
         <div class="section-actions">
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
           <button class="btn secondary" @click="fillExample">填充示例</button>
+          <button class="btn secondary" @click="fillTikTokExample">TikTok示例</button>
           <button class="btn secondary" @click="load">刷新</button>
         </div>
 
@@ -151,6 +152,34 @@ function fillExample() {
       { source: 'step_wait_result', target: 'step_extract_title' },
       { source: 'step_extract_title', target: 'step_done' }
     ]
+  }, null, 2)
+}
+
+function fillTikTokExample() {
+  form.name = 'TikTok Mock 随机浏览点赞评论'
+  form.payloadJson = JSON.stringify({
+    steps: [
+      {
+        id: 'tiktok_session',
+        type: 'tiktok_mock_session',
+        data: {
+          label: '执行 TikTok Mock 自动化会话',
+          baseUrl: 'http://localhost:3001',
+          username: 'alice',
+          password: '123456',
+          minVideos: 3,
+          maxVideos: 8,
+          minWatchMs: 3000,
+          maxWatchMs: 9000,
+          minLikes: 1,
+          maxLikes: 4,
+          minComments: 1,
+          maxComments: 3
+        }
+      },
+      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
+    ],
+    edges: [{ source: 'tiktok_session', target: 'step_done' }]
   }, null, 2)
 }
 
