@@ -26,30 +26,53 @@ public class AgentWorker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var commands = await _api.HeartbeatAsync(_currentRuns);
-            foreach (var cmd in commands)
+            try
             {
-                await HandleCommandAsync(cmd.Clone());
-            }
-
-            if (_currentRuns < _options.MaxParallelRuns)
-            {
-                var pull = await _api.PullAsync();
-                if (pull?.TaskRunId is long taskRunId && pull.ProfileId is long profileId && !string.IsNullOrWhiteSpace(pull.PayloadJson))
+                var commands = await _api.HeartbeatAsync(_currentRuns);
+                foreach (var cmd in commands)
                 {
-                    Interlocked.Increment(ref _currentRuns);
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await _executor.ExecuteAsync(taskRunId, profileId, pull.PayloadJson!);
-                        }
-                        finally
-                        {
-                            Interlocked.Decrement(ref _currentRuns);
-                        }
-                    }, stoppingToken);
+                    await HandleCommandAsync(cmd.Clone());
                 }
+
+                if (_currentRuns < _options.MaxParallelRuns)
+                {
+                    var pull = await _api.PullAsync();
+                    if (pull?.TaskRunId is long taskRunId && pull.ProfileId is long profileId)
+                    {
+                        if (string.IsNullOrWhiteSpace(pull.PayloadJson) || string.IsNullOrWhiteSpace(pull.LeaseToken))
+                        {
+                            await _api.ReportCompleteAsync(new AgentCompleteRequest
+                            {
+                                TaskRunId = taskRunId,
+                                Status = "failed",
+                                LeaseToken = pull.LeaseToken ?? "",
+                                ResultJson = "{\"error\":\"missing payload or lease token\"}",
+                                ErrorCode = "invalid_pull_payload",
+                                ErrorMessage = "missing payload or lease token"
+                            });
+                        }
+                        else
+                        {
+                            Interlocked.Increment(ref _currentRuns);
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await _executor.ExecuteAsync(taskRunId, profileId, pull.LeaseToken!, pull.PayloadJson!);
+                                }
+                                finally
+                                {
+                                    Interlocked.Decrement(ref _currentRuns);
+                                }
+                            }, stoppingToken);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Agent] main loop ERROR:");
+                Console.WriteLine(ex.ToString());
             }
 
             await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);

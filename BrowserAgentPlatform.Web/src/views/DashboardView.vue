@@ -19,7 +19,10 @@
             <div style="font-weight:700;">最近运行</div>
             <div class="muted">这里应该能直接看到系统是否真的在跑。</div>
           </div>
-          <button class="btn secondary" @click="load">刷新</button>
+          <div class="section-actions">
+            <button class="btn warn" @click="resetDemoData" :disabled="resetting">{{ resetting ? '重灌中...' : '重灌 Demo 数据' }}</button>
+            <button class="btn secondary" @click="load">刷新</button>
+          </div>
         </div>
 
         <div v-if="!summary.recentRuns?.length" class="muted">暂无运行记录</div>
@@ -94,15 +97,31 @@
 </template>
 
 <script setup>
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, API_BASE_URL } from '../services/api'
 
 const summary = reactive({})
 const apiBase = API_BASE_URL
+const resetting = ref(false)
 
 async function load() {
   Object.assign(summary, await api.summary())
+}
+
+async function resetDemoData() {
+  const confirmed = window.confirm('该操作会清空并重灌 DEMO 数据，是否继续？')
+  if (!confirmed) return
+  resetting.value = true
+  try {
+    await api.resetAndReseedDemoData()
+    await load()
+    window.alert('Demo 数据已重灌完成。')
+  } catch (err) {
+    window.alert(err.message || '重灌失败')
+  } finally {
+    resetting.value = false
+  }
 }
 
 onMounted(load)

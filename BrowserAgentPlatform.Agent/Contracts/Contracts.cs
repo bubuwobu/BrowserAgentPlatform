@@ -20,6 +20,9 @@ public class AgentPullResponse
     public long? ProfileId { get; set; }
     public string? LeaseToken { get; set; }
     public string? PayloadJson { get; set; }
+    public int? TimeoutSeconds { get; set; }
+    public string? RetryPolicyJson { get; set; }
+    public string? IsolationPolicyJson { get; set; }
 }
 public class AgentProgressRequest
 {
@@ -30,6 +33,9 @@ public class AgentProgressRequest
     public string CurrentUrl { get; set; } = "";
     public string Message { get; set; } = "";
     public string? PreviewBase64 { get; set; }
+    public string LeaseToken { get; set; } = "";
+    public DateTime? HeartbeatAt { get; set; }
+    public string? MetricsJson { get; set; }
 }
 public class AgentCompleteRequest
 {
@@ -37,4 +43,8 @@ public class AgentCompleteRequest
     public string Status { get; set; } = "";
     public string ResultJson { get; set; } = "{}";
     public string? FinalPreviewBase64 { get; set; }
+    public string LeaseToken { get; set; } = "";
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string? IsolationReportJson { get; set; }
 }

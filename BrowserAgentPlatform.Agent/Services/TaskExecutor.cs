@@ -1,5 +1,7 @@
 using System.Text.Json;
 using BrowserAgentPlatform.Agent.Contracts;
+using BrowserAgentPlatform.Agent.Models;
+using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 
 namespace BrowserAgentPlatform.Agent.Services;
@@ -8,14 +10,16 @@ public class TaskExecutor
 {
     private readonly PlatformApiClient _api;
     private readonly ProfileRuntimeManager _profiles;
+    private readonly AgentOptions _options;
 
-    public TaskExecutor(PlatformApiClient api, ProfileRuntimeManager profiles)
+    public TaskExecutor(PlatformApiClient api, ProfileRuntimeManager profiles, IOptions<AgentOptions> options)
     {
         _api = api;
         _profiles = profiles;
+        _options = options.Value;
     }
 
-    public async Task ExecuteAsync(long taskRunId, long profileId, string payloadJson)
+    public async Task ExecuteAsync(long taskRunId, long profileId, string leaseToken, string payloadJson)
     {
         string status = "completed";
         var result = new Dictionary<string, object?>();
@@ -28,7 +32,7 @@ public class TaskExecutor
             var steps = doc.RootElement.GetProperty("steps").EnumerateArray().ToList();
             var edges = doc.RootElement.TryGetProperty("edges", out var edgesProp) ? edgesProp.EnumerateArray().ToList() : new List<JsonElement>();
 
-            var context = await _profiles.GetOrLaunchAsync(profileId, startupArgsJson, fingerprintJson, proxyJson);
+            var context = await _profiles.GetOrLaunchAsync(profileId, startupArgsJson, fingerprintJson, proxyJson, _options.RunHeaded);
             var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
 
             var stepMap = steps.ToDictionary(x => x.GetProperty("id").GetString()!, x => x);
@@ -52,7 +56,9 @@ public class TaskExecutor
                     CurrentStepLabel = label ?? currentId,
                     CurrentUrl = page.Url,
                     Message = $"Executing {type}",
-                    PreviewBase64 = await CaptureAsync(page)
+                    PreviewBase64 = await CaptureAsync(page),
+                    LeaseToken = leaseToken,
+                    HeartbeatAt = DateTime.UtcNow
                 });
 
                 switch (type)
@@ -117,7 +123,8 @@ public class TaskExecutor
                 TaskRunId = taskRunId,
                 Status = status,
                 ResultJson = JsonSerializer.Serialize(result),
-                FinalPreviewBase64 = await CaptureAsync(page)
+                FinalPreviewBase64 = await CaptureAsync(page),
+                LeaseToken = leaseToken
             });
         }
         catch (Exception ex)
@@ -126,7 +133,10 @@ public class TaskExecutor
             {
                 TaskRunId = taskRunId,
                 Status = "failed",
-                ResultJson = JsonSerializer.Serialize(new { error = ex.Message })
+                ResultJson = JsonSerializer.Serialize(new { error = ex.Message }),
+                LeaseToken = leaseToken,
+                ErrorCode = "executor_error",
+                ErrorMessage = ex.Message
             });
         }
     }

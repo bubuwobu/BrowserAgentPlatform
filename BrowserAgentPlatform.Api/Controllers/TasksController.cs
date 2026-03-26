@@ -19,21 +19,61 @@ public class TasksController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
-        var tasks = await _db.Tasks.OrderByDescending(x => x.Id).ToListAsync();
+        var tasks = await _db.Tasks
+            .OrderByDescending(x => x.Id)
+            .Select(x => new
+            {
+                x.Id,
+                Name = x.Name ?? "",
+                x.BrowserProfileId,
+                SchedulingStrategy = x.SchedulingStrategy ?? "profile_owner",
+                x.PreferredAgentId,
+                PayloadJson = x.PayloadJson ?? "{}",
+                x.Priority,
+                x.TimeoutSeconds,
+                RetryPolicyJson = x.RetryPolicyJson ?? "{}",
+                Status = x.Status ?? "queued",
+                x.CreatedAt
+            })
+            .ToListAsync();
         return Ok(tasks);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create(WorkflowTaskRequest request)
     {
+        if (request.BrowserProfileId <= 0)
+        {
+            return BadRequest("请选择有效的 BrowserProfile。");
+        }
+
+        var profile = await _db.BrowserProfiles.FindAsync(request.BrowserProfileId);
+        if (profile is null)
+        {
+            return BadRequest($"BrowserProfile 不存在：{request.BrowserProfileId}");
+        }
+
+        var schedulingStrategy = string.IsNullOrWhiteSpace(request.SchedulingStrategy) ? "least_loaded" : request.SchedulingStrategy;
+        if (schedulingStrategy == "preferred_agent" && !request.PreferredAgentId.HasValue)
+        {
+            return BadRequest("schedulingStrategy=preferred_agent 时必须选择 preferredAgent。");
+        }
+
+        if (schedulingStrategy == "profile_owner" && !profile.OwnerAgentId.HasValue)
+        {
+            return BadRequest("当前 Profile 未绑定 OwnerAgent，不能使用 profile_owner 策略。可改为 least_loaded 或先绑定 OwnerAgent。");
+        }
+
         var task = new WorkflowTask
         {
-            Name = request.Name,
+            Name = request.Name ?? "未命名任务",
             BrowserProfileId = request.BrowserProfileId,
-            SchedulingStrategy = request.SchedulingStrategy,
+            SchedulingStrategy = schedulingStrategy,
             PreferredAgentId = request.PreferredAgentId,
-            PayloadJson = request.PayloadJson,
+            PayloadJson = string.IsNullOrWhiteSpace(request.PayloadJson) ? "{}" : request.PayloadJson,
             Priority = request.Priority,
+            TimeoutSeconds = request.TimeoutSeconds.GetValueOrDefault(300) <= 0 ? 300 : request.TimeoutSeconds.Value,
+            RetryPolicyJson = string.IsNullOrWhiteSpace(request.RetryPolicyJson) ? "{\"maxRetries\":1}" : request.RetryPolicyJson,
             Status = "queued"
         };
         _db.Tasks.Add(task);
@@ -42,7 +82,36 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet("runs")]
-    public Task<List<TaskRun>> Runs() => _db.TaskRuns.OrderByDescending(x => x.Id).Take(100).ToListAsync();
+    public async Task<IActionResult> Runs()
+    {
+        var runs = await _db.TaskRuns
+            .OrderByDescending(x => x.Id)
+            .Take(100)
+            .Select(x => new
+            {
+                x.Id,
+                x.TaskId,
+                x.BrowserProfileId,
+                x.AssignedAgentId,
+                LeaseToken = x.LeaseToken ?? "",
+                Status = x.Status ?? "queued",
+                x.RetryCount,
+                x.MaxRetries,
+                CurrentStepId = x.CurrentStepId ?? "",
+                CurrentStepLabel = x.CurrentStepLabel ?? "",
+                CurrentUrl = x.CurrentUrl ?? "",
+                ResultJson = x.ResultJson ?? "{}",
+                ErrorCode = x.ErrorCode ?? "",
+                ErrorMessage = x.ErrorMessage ?? "",
+                LastPreviewPath = x.LastPreviewPath ?? "",
+                x.CreatedAt,
+                x.StartedAt,
+                x.HeartbeatAt,
+                x.FinishedAt
+            })
+            .ToListAsync();
+        return Ok(runs);
+    }
 
     [HttpGet("runs/{runId:long}")]
     public async Task<IActionResult> RunDetail(long runId)
@@ -52,5 +121,15 @@ public class TasksController : ControllerBase
         var logs = await _db.TaskRunLogs.Where(x => x.TaskRunId == runId).OrderBy(x => x.Id).ToListAsync();
         var artifacts = await _db.BrowserArtifacts.Where(x => x.TaskRunId == runId).OrderByDescending(x => x.Id).ToListAsync();
         return Ok(new { run, logs, artifacts });
+    }
+
+    [HttpGet("runs/{runId:long}/isolation-report")]
+    public async Task<IActionResult> IsolationReport(long runId)
+    {
+        var reports = await _db.RunIsolationReports
+            .Where(x => x.TaskRunId == runId)
+            .OrderByDescending(x => x.Id)
+            .ToListAsync();
+        return Ok(reports);
     }
 }
