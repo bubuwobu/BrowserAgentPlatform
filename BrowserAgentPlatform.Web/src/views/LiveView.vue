@@ -32,6 +32,12 @@
           <div class="muted">profileId：{{ detail.run.browserProfileId || '-' }}</div>
           <div class="muted">startedAt：{{ formatTime(detail.run.startedAt) }}</div>
           <div class="muted">finishedAt：{{ formatTime(detail.run.finishedAt) }}</div>
+          <div class="muted" style="margin-top:8px;white-space:pre-wrap;word-break:break-word;">
+            结果：{{ prettyJson(detail.run.resultJson) }}
+          </div>
+          <div v-if="detail.run.errorMessage" class="muted" style="margin-top:4px;color:#fca5a5;">
+            错误：{{ detail.run.errorMessage }}
+          </div>
         </div>
 
         <div v-if="message" class="muted" style="margin-bottom:12px;">{{ message }}</div>
@@ -98,6 +104,15 @@ let connection = null
 function formatTime(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function prettyJson(value) {
+  if (!value) return '-'
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2)
+  } catch {
+    return value
+  }
 }
 
 async function reload() {

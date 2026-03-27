@@ -8,4 +8,15 @@ public class AgentOptions
     public int MaxParallelRuns { get; set; } = 1;
     public string SchedulerTags { get; set; } = "";
     public string ProfilesRoot { get; set; } = "data/profiles";
+    public bool RunHeaded { get; set; } = true;
+    public CommentAiOptions CommentAi { get; set; } = new();
+}
+
+public class CommentAiOptions
+{
+    public string Provider { get; set; } = "rule"; // rule | openai
+    public string Endpoint { get; set; } = "https://api.openai.com/v1/chat/completions";
+    public string ApiKey { get; set; } = "";
+    public string Model { get; set; } = "gpt-4o-mini";
+    public int TimeoutSeconds { get; set; } = 12;
 }
