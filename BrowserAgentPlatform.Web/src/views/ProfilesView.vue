@@ -31,7 +31,15 @@
         </select>
 
         <input class="input" v-model="form.localProfilePath" placeholder="本地路径（可选）" />
+        <input class="input" v-model="form.storageRootPath" placeholder="存储根路径（可选，建议绝对路径）" />
+        <input class="input" v-model="form.downloadRootPath" placeholder="下载根路径（可选，建议绝对路径）" />
+        <select class="input" v-model="form.isolationLevel">
+          <option value="strict">strict</option>
+          <option value="standard">standard</option>
+          <option value="relaxed">relaxed</option>
+        </select>
         <textarea class="input" v-model="form.startupArgsJson" rows="6" placeholder='["--start-maximized"]'></textarea>
+        <textarea class="input" v-model="form.isolationPolicyJson" rows="8" placeholder='{"timezone":"Asia/Shanghai","locale":"zh-CN"}'></textarea>
 
         <div class="section-actions">
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '保存中...' : '保存' }}</button>
@@ -63,10 +71,13 @@
               <div class="muted" style="margin-top:8px;">ownerAgentId={{ item.ownerAgentId || '-' }}</div>
               <div class="muted">proxyId={{ item.proxyId || '-' }} / fingerprintTemplateId={{ item.fingerprintTemplateId || '-' }}</div>
               <div class="muted">localProfilePath={{ item.localProfilePath || '-' }}</div>
+              <div class="muted">storageRootPath={{ item.storageRootPath || '-' }} / downloadRootPath={{ item.downloadRootPath || '-' }}</div>
+              <div class="muted">isolationLevel={{ item.isolationLevel || '-' }} / lastIsolationCheckAt={{ formatTime(item.lastIsolationCheckAt) }}</div>
               <div class="muted">lastUsedAt={{ formatTime(item.lastUsedAt) }}</div>
             </div>
 
             <div style="display:grid;gap:8px;min-width:120px;">
+              <button class="btn secondary" @click="isolationCheck(item.id)">隔离检查</button>
               <button class="btn" @click="testOpen(item.id)">测试打开</button>
               <button class="btn success" @click="takeover(item.id, true)">开始接管</button>
               <button class="btn warn" @click="takeover(item.id, false)">结束接管</button>
@@ -97,7 +108,11 @@ const form = reactive({
   proxyId: null,
   fingerprintTemplateId: null,
   localProfilePath: '',
-  startupArgsJson: '[]'
+  storageRootPath: '',
+  downloadRootPath: '',
+  startupArgsJson: '[]',
+  isolationPolicyJson: '{}',
+  isolationLevel: 'strict'
 })
 
 const agentOptions = computed(() => {
@@ -117,7 +132,11 @@ function resetForm() {
     proxyId: null,
     fingerprintTemplateId: null,
     localProfilePath: '',
-    startupArgsJson: '[]'
+    storageRootPath: '',
+    downloadRootPath: '',
+    startupArgsJson: '[]',
+    isolationPolicyJson: '{}',
+    isolationLevel: 'strict'
   })
 }
 
@@ -181,6 +200,21 @@ async function unlock(id) {
     await load()
   } catch (err) {
     message.value = err.message || '解锁失败'
+  }
+}
+
+async function isolationCheck(id) {
+  try {
+    const result = await api.profileIsolationCheck(id)
+    if (result?.ok) {
+      const warningText = (result.warnings || []).length ? `，warnings: ${(result.warnings || []).join(' | ')}` : ''
+      message.value = `Profile #${id} 隔离检查通过${warningText}`
+    } else {
+      message.value = `Profile #${id} 隔离检查失败：${(result?.errors || []).join(' | ') || 'unknown'}`
+    }
+    await load()
+  } catch (err) {
+    message.value = err.message || '隔离检查失败'
   }
 }
 
