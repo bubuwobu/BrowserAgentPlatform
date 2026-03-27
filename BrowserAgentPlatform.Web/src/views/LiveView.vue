@@ -40,6 +40,15 @@
           </div>
         </div>
 
+        <div v-if="detail.run" class="card card-dark" style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <div style="font-weight:700;">结论卡片</div>
+            <span class="badge" :class="runConclusion().status">{{ runConclusion().status }}</span>
+          </div>
+          <div class="muted" style="margin-top:8px;">{{ runConclusion().text }}</div>
+          <button class="btn secondary" style="margin-top:10px;" @click="replayCurrentRun">一键重跑</button>
+        </div>
+
         <div v-if="message" class="muted" style="margin-bottom:12px;">{{ message }}</div>
         <div v-if="!detail.logs?.length" class="muted">暂无日志</div>
 
@@ -96,7 +105,7 @@ import { auth } from '../services/auth'
 const route = useRoute()
 const apiBase = API_BASE_URL
 const cacheBust = ref('')
-const detail = reactive({ run: null, logs: [], artifacts: [] })
+const detail = reactive({ run: null, logs: [], artifacts: [], isolationReports: [] })
 const message = ref('')
 
 let connection = null
@@ -117,11 +126,37 @@ function prettyJson(value) {
 
 async function reload() {
   if (!route.params.runId) return
-  const data = await api.runDetail(route.params.runId)
+  const [data, isolationReports] = await Promise.all([
+    api.runDetail(route.params.runId),
+    api.runIsolationReport(route.params.runId)
+  ])
   detail.run = data.run
   detail.logs = data.logs || []
   detail.artifacts = data.artifacts || []
+  detail.isolationReports = isolationReports || []
   cacheBust.value = `?t=${Date.now()}`
+}
+
+function runConclusion() {
+  if (!detail.run) return { status: 'unknown', text: '暂无运行数据' }
+  const assertions = (() => {
+    try {
+      const result = JSON.parse(detail.run.resultJson || '{}')
+      const first = Object.values(result || {}).find(v => v && typeof v === 'object' && v.assertions)
+      return first?.assertions || result?.assertions || null
+    } catch {
+      return null
+    }
+  })()
+  const assertText = assertions
+    ? `断言 ${assertions.passed || 0}/${assertions.total || 0}`
+    : '无断言数据'
+  const isolation = detail.isolationReports?.[0]
+  const isolationText = isolation ? `隔离报告: ${isolation.result}` : '无隔离报告'
+  return {
+    status: detail.run.status,
+    text: `${assertText}；${isolationText}`
+  }
 }
 
 async function testOpenCurrentProfile() {
@@ -140,6 +175,16 @@ async function stopTakeover() {
   if (!detail.run?.browserProfileId) return
   await api.takeover(detail.run.browserProfileId, false)
   message.value = `已发送结束接管命令：Profile #${detail.run.browserProfileId}`
+}
+
+async function replayCurrentRun() {
+  if (!route.params.runId) return
+  try {
+    const res = await api.replayRun(route.params.runId)
+    message.value = `已创建重跑 run #${res.replayRunId}`
+  } catch (err) {
+    message.value = err.message || '重跑失败'
+  }
 }
 
 onMounted(async () => {

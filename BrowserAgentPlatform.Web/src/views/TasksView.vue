@@ -5,7 +5,10 @@
 
     <div class="grid" style="grid-template-columns: 460px 1fr 1fr; gap:16px;">
       <div class="card grid">
-        <div style="font-weight:700;">创建任务</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="font-weight:700;">创建任务</div>
+          <button class="btn secondary" @click="advancedMode = !advancedMode">{{ advancedMode ? '隐藏高级项' : '显示高级项' }}</button>
+        </div>
 
         <input class="input" v-model="form.name" placeholder="任务名称" />
 
@@ -16,22 +19,22 @@
           </option>
         </select>
 
-        <select class="input" v-model="form.schedulingStrategy">
+        <select v-if="advancedMode" class="input" v-model="form.schedulingStrategy">
           <option value="least_loaded">least_loaded（推荐）</option>
           <option value="profile_owner">profile_owner（需 Profile 绑定 owner）</option>
           <option value="preferred_agent">preferred_agent</option>
         </select>
 
-        <select class="input" v-model="form.preferredAgentId">
+        <select v-if="advancedMode" class="input" v-model="form.preferredAgentId">
           <option :value="null">无 preferredAgent</option>
           <option v-for="item in agentOptions" :key="item.id" :value="item.id">
             {{ item.id }} - {{ item.name || 'Unnamed Agent' }}（{{ item.status }}）
           </option>
         </select>
 
-        <input class="input" v-model.number="form.priority" type="number" placeholder="优先级" />
+        <input v-if="advancedMode" class="input" v-model.number="form.priority" type="number" placeholder="优先级" />
 
-        <div class="card card-dark">
+        <div v-if="advancedMode" class="card card-dark">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
             <div style="font-weight:700;">任务模板库</div>
             <select class="input" style="max-width:220px;" v-model="selectedTemplate">
@@ -72,6 +75,16 @@
               <input class="input" v-model.number="tiktokPlan.maxLikes" type="number" placeholder="最多点赞" />
               <input class="input" v-model.number="tiktokPlan.minComments" type="number" placeholder="最少评论" />
               <input class="input" v-model.number="tiktokPlan.maxComments" type="number" placeholder="最多评论" />
+              <select class="input" v-model="tiktokPlan.behaviorProfile">
+                <option value="conservative">conservative</option>
+                <option value="balanced">balanced</option>
+                <option value="aggressive">aggressive</option>
+              </select>
+              <select class="input" v-model="tiktokPlan.commentProvider">
+                <option value="rule">rule</option>
+                <option value="deepseek">deepseek</option>
+                <option value="openai">openai</option>
+              </select>
             </template>
             <template v-if="selectedTemplate === 'baidu'">
               <input class="input" v-model="baiduPlan.url" placeholder="Baidu URL" />
@@ -204,6 +217,7 @@ const profiles = ref([])
 const saving = ref(false)
 const message = ref('')
 let timer = null
+const advancedMode = ref(false)
 
 const form = reactive({
   name: '',
@@ -227,7 +241,9 @@ const tiktokPlan = reactive({
   minLikes: 1,
   maxLikes: 4,
   minComments: 1,
-  maxComments: 3
+  maxComments: 3,
+  behaviorProfile: 'balanced',
+  commentProvider: 'deepseek'
 })
 const baiduPlan = reactive({
   url: 'https://www.baidu.com',
@@ -351,8 +367,8 @@ function fillTikTokExample() {
           maxLikes: tiktokPlan.maxLikes,
           minComments: tiktokPlan.minComments,
           maxComments: tiktokPlan.maxComments,
-          behaviorProfile: 'balanced',
-          commentProvider: 'deepseek',
+          behaviorProfile: tiktokPlan.behaviorProfile,
+          commentProvider: tiktokPlan.commentProvider,
           watchPattern: 'engaged',
           commentStyle: 'friendly',
           typingMinDelayMs: 35,
