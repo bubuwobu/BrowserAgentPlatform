@@ -235,6 +235,20 @@ const facebookPlan = reactive({
   keyword: 'automation testing'
 })
 
+const tiktokPlan = reactive({
+  baseUrl: 'http://localhost:3001',
+  username: 'alice',
+  password: '123456',
+  minVideos: 3,
+  maxVideos: 8,
+  minWatchMs: 3000,
+  maxWatchMs: 9000,
+  minLikes: 1,
+  maxLikes: 4,
+  minComments: 1,
+  maxComments: 3
+})
+
 const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
 const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
