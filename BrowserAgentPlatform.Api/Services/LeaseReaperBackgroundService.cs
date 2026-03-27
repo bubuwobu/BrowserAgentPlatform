@@ -33,6 +33,8 @@ public class LeaseReaperBackgroundService : BackgroundService
                     {
                         run.Status = "queued";
                         run.AssignedAgentId = null;
+                        run.LeaseToken = "";
+                        run.HeartbeatAt = null;
                     }
                 }
             }
