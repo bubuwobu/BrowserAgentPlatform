@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BrowserAgentPlatform.Agent.Contracts;
 using BrowserAgentPlatform.Agent.Models;
 using Microsoft.Extensions.Options;
 
