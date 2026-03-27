@@ -9,6 +9,7 @@ import ProfilesView from './views/ProfilesView.vue'
 import FingerprintsView from './views/FingerprintsView.vue'
 import TasksView from './views/TasksView.vue'
 import LiveView from './views/LiveView.vue'
+import WorkbenchView from './views/WorkbenchView.vue'
 import { auth } from './services/auth'
 
 const routes = [
@@ -18,6 +19,7 @@ const routes = [
   { path: '/templates', component: TemplatesView, meta: { auth: true } },
   { path: '/profiles', component: ProfilesView, meta: { auth: true } },
   { path: '/fingerprints', component: FingerprintsView, meta: { auth: true } },
+  { path: '/workbench', component: WorkbenchView, meta: { auth: true } },
   { path: '/tasks', component: TasksView, meta: { auth: true } },
   { path: '/live/:runId?', component: LiveView, meta: { auth: true } }
 ]

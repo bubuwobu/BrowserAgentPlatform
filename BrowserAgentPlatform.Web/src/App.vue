@@ -12,6 +12,7 @@
         <RouterLink to="/templates" class="nav-item">模板中心</RouterLink>
         <RouterLink to="/profiles" class="nav-item">Profiles</RouterLink>
         <RouterLink to="/fingerprints" class="nav-item">指纹模板</RouterLink>
+        <RouterLink to="/workbench" class="nav-item">闭环工作台</RouterLink>
         <RouterLink to="/tasks" class="nav-item">任务中心</RouterLink>
         <RouterLink to="/live" class="nav-item">Live 调试</RouterLink>
       </nav>
