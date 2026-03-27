@@ -3,21 +3,41 @@
     <div class="page-title">任务中心</div>
     <div class="page-subtitle">创建任务、查看运行记录，并跳转到 Live 调试。</div>
 
-    <div class="grid" style="grid-template-columns: 460px 1fr 1fr; gap:16px;">
-      <div class="card grid">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <div style="font-weight:700;">创建任务</div>
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div>
+          <div style="font-weight:700;">任务编辑区（位于列表上方）</div>
+          <div class="muted">先在这里新增/编辑配置，再在下方重点查看任务和运行列表。</div>
+        </div>
+        <div class="section-actions">
+          <button class="btn secondary" @click="editorExpanded = !editorExpanded">
+            {{ editorExpanded ? '收起编辑区' : '展开编辑区' }}
+          </button>
           <button class="btn secondary" @click="advancedMode = !advancedMode">{{ advancedMode ? '隐藏高级项' : '显示高级项' }}</button>
         </div>
+      </div>
 
+      <div v-if="editorExpanded" class="grid" style="margin-top:12px;">
         <input class="input" v-model="form.name" placeholder="任务名称" />
 
-        <select class="input" v-model="form.browserProfileId">
-          <option :value="null">请选择 BrowserProfile（必选）</option>
-          <option v-for="item in profileOptions" :key="item.id" :value="item.id">
-            {{ item.id }} - {{ item.name }}（{{ item.status }}）
-          </option>
-        </select>
+        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:8px;">
+          <select class="input" v-model="form.browserProfileId">
+            <option :value="null">请选择 BrowserProfile（必选）</option>
+            <option v-for="item in profileOptions" :key="item.id" :value="item.id">
+              {{ item.id }} - {{ item.name }}（{{ item.status }}）
+            </option>
+          </select>
+
+          <div class="card card-dark" style="padding:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div style="font-weight:700;">编辑模式</div>
+              <div class="section-actions">
+                <button class="btn secondary" @click="editorMode = 'form'" :disabled="editorMode === 'form'">配置表单</button>
+                <button class="btn secondary" @click="editorMode = 'json'" :disabled="editorMode === 'json'">高级 JSON</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <select v-if="advancedMode" class="input" v-model="form.schedulingStrategy">
           <option value="least_loaded">least_loaded（推荐）</option>
@@ -47,17 +67,6 @@
           <div class="section-actions">
             <button class="btn secondary" @click="applyTemplate">应用当前模板</button>
           </div>
-        </div>
-
-        <div class="card card-dark">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="font-weight:700;">编辑模式</div>
-            <div class="section-actions">
-              <button class="btn secondary" @click="editorMode = 'form'" :disabled="editorMode === 'form'">配置表单</button>
-              <button class="btn secondary" @click="editorMode = 'json'" :disabled="editorMode === 'json'">高级 JSON</button>
-            </div>
-          </div>
-          <div class="muted">推荐先用“配置表单”快速配置，再切换“高级 JSON”做微调。</div>
         </div>
 
         <div v-if="editorMode === 'form'" class="card card-dark">
@@ -132,7 +141,9 @@
 
         <div v-if="message" class="muted">{{ message }}</div>
       </div>
+    </div>
 
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div>
@@ -218,6 +229,7 @@ const saving = ref(false)
 const message = ref('')
 let timer = null
 const advancedMode = ref(false)
+const editorExpanded = ref(true)
 
 const form = reactive({
   name: '',
