@@ -31,7 +31,24 @@
 
         <input class="input" v-model.number="form.priority" type="number" placeholder="优先级" />
 
-        <textarea class="input" rows="12" v-model="form.payloadJson" placeholder="任务 PayloadJson"></textarea>
+        <div class="card card-dark">
+          <div style="font-weight:700;margin-bottom:8px;">TikTok 快速配置</div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;">
+            <input class="input" v-model="tiktokPlan.baseUrl" placeholder="baseUrl" />
+            <input class="input" v-model="tiktokPlan.username" placeholder="username" />
+            <input class="input" v-model="tiktokPlan.password" placeholder="password" />
+            <input class="input" v-model.number="tiktokPlan.minVideos" type="number" placeholder="最少视频数" />
+            <input class="input" v-model.number="tiktokPlan.maxVideos" type="number" placeholder="最多视频数" />
+            <input class="input" v-model.number="tiktokPlan.minWatchMs" type="number" placeholder="最短停留(ms)" />
+            <input class="input" v-model.number="tiktokPlan.maxWatchMs" type="number" placeholder="最长停留(ms)" />
+            <input class="input" v-model.number="tiktokPlan.minLikes" type="number" placeholder="最少点赞" />
+            <input class="input" v-model.number="tiktokPlan.maxLikes" type="number" placeholder="最多点赞" />
+            <input class="input" v-model.number="tiktokPlan.minComments" type="number" placeholder="最少评论" />
+            <input class="input" v-model.number="tiktokPlan.maxComments" type="number" placeholder="最多评论" />
+          </div>
+        </div>
+
+        <textarea class="input" rows="10" v-model="form.payloadJson" placeholder="任务 PayloadJson"></textarea>
 
         <div class="section-actions">
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
@@ -58,6 +75,12 @@
           </div>
         </div>
 
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <span class="badge queued">总任务 {{ tasks.length }}</span>
+          <span class="badge completed">已完成 {{ tasks.filter(x => x.status === 'completed').length }}</span>
+          <span class="badge failed">失败 {{ tasks.filter(x => x.status === 'failed').length }}</span>
+        </div>
+
         <div v-if="!tasks.length" class="muted">暂无任务</div>
 
         <div v-for="item in tasks" :key="item.id" class="card card-dark" style="margin-bottom:12px;">
@@ -71,6 +94,7 @@
               <div class="muted">strategy={{ item.schedulingStrategy }}</div>
               <div class="muted">preferredAgentId={{ item.preferredAgentId || '-' }}</div>
               <div class="muted">priority={{ item.priority }}</div>
+              <div class="muted" style="margin-top:8px;">payload={{ shortText(item.payloadJson, 120) }}</div>
             </div>
           </div>
         </div>
@@ -82,6 +106,12 @@
             <div style="font-weight:700;">最近运行</div>
             <div class="muted">创建任务后，这里应该很快出现新的 run。</div>
           </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <span class="badge running">运行中 {{ runs.filter(x => x.status === 'running' || x.status === 'leased').length }}</span>
+          <span class="badge completed">已完成 {{ runs.filter(x => x.status === 'completed').length }}</span>
+          <span class="badge failed">失败 {{ runs.filter(x => x.status === 'failed' || x.status === 'dead' || x.status === 'timeout').length }}</span>
         </div>
 
         <div v-if="!runs.length" class="muted">暂无运行记录</div>
@@ -96,7 +126,7 @@
               <div class="muted" style="margin-top:8px;">task={{ run.taskId }} / profile={{ run.browserProfileId }}</div>
               <div class="muted">step={{ run.currentStepLabel || '-' }}</div>
               <div class="muted">url={{ run.currentUrl || '-' }}</div>
-              <div class="muted">result={{ run.resultJson || '-' }}</div>
+              <div class="muted">result={{ shortText(run.resultJson || '-', 180) }}</div>
             </div>
             <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
           </div>
@@ -128,9 +158,29 @@ const form = reactive({
   payloadJson: '{}'
 })
 
+const tiktokPlan = reactive({
+  baseUrl: 'http://localhost:3001',
+  username: 'alice',
+  password: '123456',
+  minVideos: 3,
+  maxVideos: 8,
+  minWatchMs: 3000,
+  maxWatchMs: 9000,
+  minLikes: 1,
+  maxLikes: 4,
+  minComments: 1,
+  maxComments: 3
+})
+
 const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
 const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
+
+function shortText(text, max = 120) {
+  if (!text) return '-'
+  const value = String(text).replace(/\s+/g, ' ').trim()
+  return value.length > max ? `${value.slice(0, max)}...` : value
+}
 
 function fillExample() {
   form.name = '百度搜索示例流程'
@@ -164,17 +214,17 @@ function fillTikTokExample() {
         type: 'tiktok_mock_session',
         data: {
           label: '执行 TikTok Mock 自动化会话',
-          baseUrl: 'http://localhost:3001',
-          username: 'alice',
-          password: '123456',
-          minVideos: 3,
-          maxVideos: 8,
-          minWatchMs: 3000,
-          maxWatchMs: 9000,
-          minLikes: 1,
-          maxLikes: 4,
-          minComments: 1,
-          maxComments: 3
+          baseUrl: tiktokPlan.baseUrl,
+          username: tiktokPlan.username,
+          password: tiktokPlan.password,
+          minVideos: tiktokPlan.minVideos,
+          maxVideos: tiktokPlan.maxVideos,
+          minWatchMs: tiktokPlan.minWatchMs,
+          maxWatchMs: tiktokPlan.maxWatchMs,
+          minLikes: tiktokPlan.minLikes,
+          maxLikes: tiktokPlan.maxLikes,
+          minComments: tiktokPlan.minComments,
+          maxComments: tiktokPlan.maxComments
         }
       },
       { id: 'step_done', type: 'end_success', data: { label: '完成' } }
