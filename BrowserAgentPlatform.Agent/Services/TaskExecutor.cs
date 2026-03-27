@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using BrowserAgentPlatform.Agent.Contracts;
+using BrowserAgentPlatform.Agent.Models;
+using Microsoft.Extensions.Options;
 using Microsoft.Playwright;
 
 namespace BrowserAgentPlatform.Agent.Services;
@@ -8,14 +11,16 @@ public class TaskExecutor
 {
     private readonly PlatformApiClient _api;
     private readonly ProfileRuntimeManager _profiles;
+    private readonly AgentOptions _options;
 
-    public TaskExecutor(PlatformApiClient api, ProfileRuntimeManager profiles)
+    public TaskExecutor(PlatformApiClient api, ProfileRuntimeManager profiles, IOptions<AgentOptions> options)
     {
         _api = api;
         _profiles = profiles;
+        _options = options.Value;
     }
 
-    public async Task ExecuteAsync(long taskRunId, long profileId, string payloadJson)
+    public async Task ExecuteAsync(long taskRunId, long profileId, string leaseToken, string payloadJson)
     {
         string status = "completed";
         var result = new Dictionary<string, object?>();
@@ -28,7 +33,7 @@ public class TaskExecutor
             var steps = doc.RootElement.GetProperty("steps").EnumerateArray().ToList();
             var edges = doc.RootElement.TryGetProperty("edges", out var edgesProp) ? edgesProp.EnumerateArray().ToList() : new List<JsonElement>();
 
-            var context = await _profiles.GetOrLaunchAsync(profileId, startupArgsJson, fingerprintJson, proxyJson);
+            var context = await _profiles.GetOrLaunchAsync(profileId, startupArgsJson, fingerprintJson, proxyJson, _options.RunHeaded);
             var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
 
             var stepMap = steps.ToDictionary(x => x.GetProperty("id").GetString()!, x => x);
@@ -52,7 +57,9 @@ public class TaskExecutor
                     CurrentStepLabel = label ?? currentId,
                     CurrentUrl = page.Url,
                     Message = $"Executing {type}",
-                    PreviewBase64 = await CaptureAsync(page)
+                    PreviewBase64 = await CaptureAsync(page),
+                    LeaseToken = leaseToken,
+                    HeartbeatAt = DateTime.UtcNow
                 });
 
                 switch (type)
@@ -92,6 +99,9 @@ public class TaskExecutor
                         var text = await page.TextContentAsync(data.GetProperty("selector").GetString()!);
                         result[currentId] = text;
                         break;
+                    case "tiktok_mock_session":
+                        result[currentId] = await ExecuteTiktokMockSessionAsync(page, data);
+                        break;
                     case "loop":
                         var count = data.TryGetProperty("count", out var cnt) ? cnt.GetInt32() : 1;
                         result[$"{currentId}_loopRemaining"] = count;
@@ -117,7 +127,8 @@ public class TaskExecutor
                 TaskRunId = taskRunId,
                 Status = status,
                 ResultJson = JsonSerializer.Serialize(result),
-                FinalPreviewBase64 = await CaptureAsync(page)
+                FinalPreviewBase64 = await CaptureAsync(page),
+                LeaseToken = leaseToken
             });
         }
         catch (Exception ex)
@@ -126,9 +137,105 @@ public class TaskExecutor
             {
                 TaskRunId = taskRunId,
                 Status = "failed",
-                ResultJson = JsonSerializer.Serialize(new { error = ex.Message })
+                ResultJson = JsonSerializer.Serialize(new { error = ex.Message }),
+                LeaseToken = leaseToken,
+                ErrorCode = "executor_error",
+                ErrorMessage = ex.Message
             });
         }
+    }
+
+    private static async Task<object> ExecuteTiktokMockSessionAsync(IPage page, JsonElement data)
+    {
+        var baseUrl = data.TryGetProperty("baseUrl", out var baseUrlEl) ? (baseUrlEl.GetString() ?? "http://localhost:3001").TrimEnd('/') : "http://localhost:3001";
+        var username = data.TryGetProperty("username", out var uEl) ? (uEl.GetString() ?? "alice") : "alice";
+        var password = data.TryGetProperty("password", out var pEl) ? (pEl.GetString() ?? "123456") : "123456";
+        var minVideos = data.TryGetProperty("minVideos", out var minV) ? Math.Max(1, minV.GetInt32()) : 3;
+        var maxVideos = data.TryGetProperty("maxVideos", out var maxV) ? Math.Max(minVideos, maxV.GetInt32()) : Math.Max(minVideos, 6);
+        var minWatchMs = data.TryGetProperty("minWatchMs", out var minW) ? Math.Max(800, minW.GetInt32()) : 2000;
+        var maxWatchMs = data.TryGetProperty("maxWatchMs", out var maxW) ? Math.Max(minWatchMs, maxW.GetInt32()) : Math.Max(minWatchMs, 6000);
+        var minLikes = data.TryGetProperty("minLikes", out var minL) ? Math.Max(0, minL.GetInt32()) : 0;
+        var maxLikes = data.TryGetProperty("maxLikes", out var maxL) ? Math.Max(minLikes, maxL.GetInt32()) : 2;
+        var minComments = data.TryGetProperty("minComments", out var minC) ? Math.Max(0, minC.GetInt32()) : 0;
+        var maxComments = data.TryGetProperty("maxComments", out var maxC) ? Math.Max(minComments, maxC.GetInt32()) : 2;
+
+        var videoTarget = Random.Shared.Next(minVideos, maxVideos + 1);
+        var likeTarget = Math.Min(videoTarget, Random.Shared.Next(minLikes, maxLikes + 1));
+        var commentTarget = Math.Min(videoTarget, Random.Shared.Next(minComments, maxComments + 1));
+        var liked = 0;
+        var commented = 0;
+        var watched = 0;
+
+        await page.GotoAsync($"{baseUrl}/login");
+        await page.WaitForSelectorAsync("[data-testid='login-form']", new() { Timeout = 15000 });
+        await page.FillAsync("[data-testid='username-input']", username);
+        await page.FillAsync("[data-testid='password-input']", password);
+        await page.ClickAsync("[data-testid='login-submit']");
+        await page.WaitForURLAsync(url => url.Contains("/feed"), new() { Timeout = 15000 });
+        await page.WaitForSelectorAsync("[data-testid='tt-video-card'].active", new() { Timeout = 15000 });
+
+        for (var i = 0; i < videoTarget; i++)
+        {
+            await page.WaitForSelectorAsync("[data-testid='tt-video-card'].active", new() { Timeout = 10000 });
+            var active = page.Locator("[data-testid='tt-video-card'].active");
+            var watchMs = Random.Shared.Next(minWatchMs, maxWatchMs + 1);
+            await page.WaitForTimeoutAsync(watchMs);
+            watched++;
+
+            if (liked < likeTarget && (((likeTarget - liked) >= (videoTarget - i - 1)) || Random.Shared.NextDouble() > 0.45))
+            {
+                await active.Locator("[data-testid='tt-like-btn']").ClickAsync();
+                liked++;
+                await page.WaitForTimeoutAsync(200);
+            }
+
+            if (commented < commentTarget && (((commentTarget - commented) >= (videoTarget - i - 1)) || Random.Shared.NextDouble() > 0.5))
+            {
+                await active.Locator("[data-testid='tt-comment-toggle']").ClickAsync();
+                await page.WaitForSelectorAsync("[data-testid='tt-comment-panel']", new() { Timeout = 5000 });
+                var commentText = await GenerateAiLikeCommentAsync(page, active);
+                await page.FillAsync("[data-testid='tt-comment-input']", commentText);
+                await page.ClickAsync("[data-testid='tt-comment-submit']");
+                commented++;
+                await page.WaitForTimeoutAsync(350);
+                var closeBtn = page.Locator("[data-testid='tt-comment-close']");
+                if (await closeBtn.CountAsync() > 0) await closeBtn.ClickAsync();
+            }
+
+            if (i < videoTarget - 1)
+            {
+                await page.ClickAsync("[data-testid='tt-nav-next']");
+                await page.WaitForTimeoutAsync(650);
+            }
+        }
+
+        return new
+        {
+            mode = "tiktok_mock_session",
+            baseUrl,
+            watchedVideos = watched,
+            watchedTarget = videoTarget,
+            likedVideos = liked,
+            likeTarget,
+            commentedVideos = commented,
+            commentTarget
+        };
+    }
+
+    private static async Task<string> GenerateAiLikeCommentAsync(IPage page, ILocator activeCard)
+    {
+        var caption = (await activeCard.Locator("[data-testid='tt-caption']").TextContentAsync())?.Trim() ?? "";
+        var comments = await page.Locator("[data-testid='tt-comment-panel'] .tt-comment-text").AllTextContentsAsync();
+        var cleaned = comments
+            .Select(x => Regex.Replace(x ?? "", "\\s+", " ").Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Take(5)
+            .ToList();
+
+        var seed = cleaned.FirstOrDefault() ?? "这个内容很有意思";
+        if (caption.Length > 28) caption = caption[..28];
+        if (seed.Length > 24) seed = seed[..24];
+        return $"看完很有共鸣，{seed}。{(string.IsNullOrWhiteSpace(caption) ? "节奏感很好，支持一下～" : $"“{caption}”这个点我也很喜欢，支持！")}";
     }
 
     private static string? ResolveNext(string currentId, string type, JsonElement data, Dictionary<string, object?> result, Dictionary<string, List<JsonElement>> edgeMap)
