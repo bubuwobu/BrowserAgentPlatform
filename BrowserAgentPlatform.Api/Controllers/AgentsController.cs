@@ -139,6 +139,30 @@ public class AgentsController : ControllerBase
             return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
         }
 
+        var isolationGate = ParseIsolationGate(result.Value.task.PayloadJson);
+        if (isolationGate.enforce)
+        {
+            var checkedAt = profile.LastIsolationCheckAt;
+            var stale = !checkedAt.HasValue || checkedAt.Value < DateTime.UtcNow.AddMinutes(-isolationGate.requireRecentCheckMinutes);
+            if (stale)
+            {
+                result.Value.run.Status = "failed";
+                result.Value.run.ErrorCode = "isolation_gate_failed";
+                result.Value.run.ErrorMessage = $"Profile isolation check is stale. Require recent check within {isolationGate.requireRecentCheckMinutes} minutes.";
+                _db.TaskRunLogs.Add(new TaskRunLog
+                {
+                    TaskRunId = result.Value.run.Id,
+                    Level = "error",
+                    StepId = "isolation_gate",
+                    Message = result.Value.run.ErrorMessage
+                });
+                await _db.SaveChangesAsync();
+                await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+                await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), $"{{\"reason\":\"isolation_gate_failed\",\"requireRecentCheckMinutes\":{isolationGate.requireRecentCheckMinutes}}}");
+                return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
+            }
+        }
+
         profile.LastIsolationCheckAt = DateTime.UtcNow;
         profile.RuntimeMetaJson = check.EffectivePolicyJson;
         await _db.SaveChangesAsync();
@@ -278,6 +302,29 @@ public class AgentsController : ControllerBase
         await _notifier.PublishRunUpdateAsync(run.Id, new { run.Id, run.Status, run.LastPreviewPath, completed = true });
         await _auditService.WriteAsync("run_complete", "agent", requestAgentKey, "task_run", run.Id.ToString(), $"{{\"status\":\"{run.Status}\"}}");
         return Ok(new { ok = true });
+    }
+
+    private static (bool enforce, int requireRecentCheckMinutes) ParseIsolationGate(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson)) return (false, 0);
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (!doc.RootElement.TryGetProperty("isolationGate", out var gate) || gate.ValueKind != JsonValueKind.Object)
+            {
+                return (false, 0);
+            }
+
+            var enforce = gate.TryGetProperty("enforce", out var enforceEl) && enforceEl.ValueKind == JsonValueKind.True;
+            var minutes = gate.TryGetProperty("requireRecentCheckMinutes", out var minuteEl) && minuteEl.ValueKind == JsonValueKind.Number
+                ? Math.Clamp(minuteEl.GetInt32(), 1, 24 * 60)
+                : 60;
+            return (enforce, minutes);
+        }
+        catch
+        {
+            return (false, 0);
+        }
     }
 
     [Authorize]

@@ -95,7 +95,7 @@
 
         <div v-if="editorMode === 'form'" class="card card-dark">
           <div style="font-weight:700;">编排预览（只读）</div>
-          <div class="muted">按步骤顺序预览当前 payload，帮助快速检查编排是否正确。</div>
+          <div class="muted">按步骤顺序预览当前 payload，并默认附带 isolationGate + assertions（质量门禁）。</div>
           <div v-if="payloadPreviewError" class="muted" style="color:#ff9a9a;margin-top:6px;">{{ payloadPreviewError }}</div>
           <div v-else style="margin-top:8px;">
             <div v-for="(step, idx) in payloadSteps" :key="step.id || idx" class="muted" style="margin-bottom:4px;">
@@ -235,20 +235,6 @@ const facebookPlan = reactive({
   keyword: 'automation testing'
 })
 
-const tiktokPlan = reactive({
-  baseUrl: 'http://localhost:3001',
-  username: 'alice',
-  password: '123456',
-  minVideos: 3,
-  maxVideos: 8,
-  minWatchMs: 3000,
-  maxWatchMs: 9000,
-  minLikes: 1,
-  maxLikes: 4,
-  minComments: 1,
-  maxComments: 3
-})
-
 const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
 const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
@@ -282,6 +268,10 @@ function shortText(text, max = 120) {
 
 function buildBaiduPayload() {
   return {
+    isolationGate: {
+      enforce: true,
+      requireRecentCheckMinutes: 120
+    },
     steps: [
       { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: baiduPlan.url } },
       { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: 'textarea[name=\"wd\"]', timeout: 15000 } },
@@ -298,12 +288,20 @@ function buildBaiduPayload() {
       { source: 'step_click_search', target: 'step_wait_result' },
       { source: 'step_wait_result', target: 'step_extract_title' },
       { source: 'step_extract_title', target: 'step_done' }
+    ],
+    assertions: [
+      { type: 'step_exists', label: '提取步骤必须存在', stepId: 'step_extract_title' },
+      { type: 'text_contains', label: '结果需包含关键词片段', sourceStepId: 'step_extract_title', expected: baiduPlan.keyword.split(' ')[0] || baiduPlan.keyword }
     ]
   }
 }
 
 function buildFacebookPayload() {
   return {
+    isolationGate: {
+      enforce: true,
+      requireRecentCheckMinutes: 120
+    },
     steps: [
       { id: 'step_open', type: 'open', data: { label: '打开 Facebook', url: facebookPlan.url } },
       { id: 'step_wait_search', type: 'wait_for_element', data: { label: '等待搜索框', selector: 'input[placeholder*=\"Search\"], input[type=\"search\"]', timeout: 15000 } },
@@ -314,6 +312,9 @@ function buildFacebookPayload() {
       { source: 'step_open', target: 'step_wait_search' },
       { source: 'step_wait_search', target: 'step_type_keyword' },
       { source: 'step_type_keyword', target: 'step_done' }
+    ],
+    assertions: [
+      { type: 'step_exists', label: '搜索输入步骤必须存在', stepId: 'step_type_keyword' }
     ]
   }
 }
@@ -326,6 +327,10 @@ function fillExample() {
 function fillTikTokExample() {
   form.name = 'TikTok Mock 随机浏览点赞评论'
   form.payloadJson = JSON.stringify({
+    isolationGate: {
+      enforce: true,
+      requireRecentCheckMinutes: 120
+    },
     steps: [
       {
         id: 'tiktok_session',
@@ -347,7 +352,12 @@ function fillTikTokExample() {
       },
       { id: 'step_done', type: 'end_success', data: { label: '完成' } }
     ],
-    edges: [{ source: 'tiktok_session', target: 'step_done' }]
+    edges: [{ source: 'tiktok_session', target: 'step_done' }],
+    assertions: [
+      { type: 'number_range', label: '浏览视频数量符合范围', sourcePath: 'tiktok_session.watchedVideos', min: tiktokPlan.minVideos, max: tiktokPlan.maxVideos },
+      { type: 'number_range', label: '点赞数量符合范围', sourcePath: 'tiktok_session.likedVideos', min: tiktokPlan.minLikes, max: tiktokPlan.maxLikes },
+      { type: 'number_range', label: '评论数量符合范围', sourcePath: 'tiktok_session.commentedVideos', min: tiktokPlan.minComments, max: tiktokPlan.maxComments }
+    ]
   }, null, 2)
 }
 

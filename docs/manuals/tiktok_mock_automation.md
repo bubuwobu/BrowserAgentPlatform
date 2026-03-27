@@ -18,6 +18,10 @@
 
 ```json
 {
+  "isolationGate": {
+    "enforce": true,
+    "requireRecentCheckMinutes": 120
+  },
   "steps": [
     {
       "id": "tiktok_session",
@@ -41,9 +45,19 @@
   ],
   "edges": [
     { "source": "tiktok_session", "target": "done" }
+  ],
+  "assertions": [
+    { "type": "number_range", "label": "浏览数范围校验", "sourcePath": "tiktok_session.watchedVideos", "min": 3, "max": 8 },
+    { "type": "number_range", "label": "点赞数范围校验", "sourcePath": "tiktok_session.likedVideos", "min": 1, "max": 4 },
+    { "type": "number_range", "label": "评论数范围校验", "sourcePath": "tiktok_session.commentedVideos", "min": 1, "max": 3 }
   ]
 }
 ```
+
+## 质量门禁（新）
+
+- `isolationGate`：要求 Profile 在最近 N 分钟内完成隔离检查，否则任务在 Pull 阶段直接失败（错误码 `isolation_gate_failed`）。
+- `assertions`：执行后自动校验结果；任何断言失败都会把 run 标记为 `failed`，并在 `resultJson.assertions` 中给出失败原因。
 
 ## Web 页面使用
 
