@@ -3,7 +3,7 @@
     <div class="page-title">任务中心</div>
     <div class="page-subtitle">创建任务、查看运行记录，并跳转到 Live 调试。</div>
 
-    <div class="grid" style="grid-template-columns: 420px 1fr 1fr; gap:16px;">
+    <div class="grid" style="grid-template-columns: 460px 1fr 1fr; gap:16px;">
       <div class="card grid">
         <div style="font-weight:700;">创建任务</div>
 
@@ -32,28 +32,81 @@
         <input class="input" v-model.number="form.priority" type="number" placeholder="优先级" />
 
         <div class="card card-dark">
-          <div style="font-weight:700;margin-bottom:8px;">TikTok 快速配置</div>
-          <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;">
-            <input class="input" v-model="tiktokPlan.baseUrl" placeholder="baseUrl" />
-            <input class="input" v-model="tiktokPlan.username" placeholder="username" />
-            <input class="input" v-model="tiktokPlan.password" placeholder="password" />
-            <input class="input" v-model.number="tiktokPlan.minVideos" type="number" placeholder="最少视频数" />
-            <input class="input" v-model.number="tiktokPlan.maxVideos" type="number" placeholder="最多视频数" />
-            <input class="input" v-model.number="tiktokPlan.minWatchMs" type="number" placeholder="最短停留(ms)" />
-            <input class="input" v-model.number="tiktokPlan.maxWatchMs" type="number" placeholder="最长停留(ms)" />
-            <input class="input" v-model.number="tiktokPlan.minLikes" type="number" placeholder="最少点赞" />
-            <input class="input" v-model.number="tiktokPlan.maxLikes" type="number" placeholder="最多点赞" />
-            <input class="input" v-model.number="tiktokPlan.minComments" type="number" placeholder="最少评论" />
-            <input class="input" v-model.number="tiktokPlan.maxComments" type="number" placeholder="最多评论" />
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="font-weight:700;">任务模板库</div>
+            <select class="input" style="max-width:220px;" v-model="selectedTemplate">
+              <option value="tiktok">TikTok 模板</option>
+              <option value="baidu">Baidu 模板</option>
+              <option value="facebook">Facebook 模板</option>
+            </select>
+          </div>
+          <div class="muted" style="margin-bottom:8px;">一键切换模板并自动填充对应参数。</div>
+          <div class="section-actions">
+            <button class="btn secondary" @click="applyTemplate">应用当前模板</button>
           </div>
         </div>
 
-        <textarea class="input" rows="10" v-model="form.payloadJson" placeholder="任务 PayloadJson"></textarea>
+        <div class="card card-dark">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="font-weight:700;">编辑模式</div>
+            <div class="section-actions">
+              <button class="btn secondary" @click="editorMode = 'form'" :disabled="editorMode === 'form'">配置表单</button>
+              <button class="btn secondary" @click="editorMode = 'json'" :disabled="editorMode === 'json'">高级 JSON</button>
+            </div>
+          </div>
+          <div class="muted">推荐先用“配置表单”快速配置，再切换“高级 JSON”做微调。</div>
+        </div>
+
+        <div v-if="editorMode === 'form'" class="card card-dark">
+          <div style="font-weight:700;margin-bottom:8px;">模板参数配置（{{ templateLabel }}）</div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;">
+            <template v-if="selectedTemplate === 'tiktok'">
+              <input class="input" v-model="tiktokPlan.baseUrl" placeholder="baseUrl" />
+              <input class="input" v-model="tiktokPlan.username" placeholder="username" />
+              <input class="input" v-model="tiktokPlan.password" placeholder="password" />
+              <input class="input" v-model.number="tiktokPlan.minVideos" type="number" placeholder="最少视频数" />
+              <input class="input" v-model.number="tiktokPlan.maxVideos" type="number" placeholder="最多视频数" />
+              <input class="input" v-model.number="tiktokPlan.minWatchMs" type="number" placeholder="最短停留(ms)" />
+              <input class="input" v-model.number="tiktokPlan.maxWatchMs" type="number" placeholder="最长停留(ms)" />
+              <input class="input" v-model.number="tiktokPlan.minLikes" type="number" placeholder="最少点赞" />
+              <input class="input" v-model.number="tiktokPlan.maxLikes" type="number" placeholder="最多点赞" />
+              <input class="input" v-model.number="tiktokPlan.minComments" type="number" placeholder="最少评论" />
+              <input class="input" v-model.number="tiktokPlan.maxComments" type="number" placeholder="最多评论" />
+            </template>
+            <template v-if="selectedTemplate === 'baidu'">
+              <input class="input" v-model="baiduPlan.url" placeholder="Baidu URL" />
+              <input class="input" v-model="baiduPlan.keyword" placeholder="搜索关键词" />
+            </template>
+            <template v-if="selectedTemplate === 'facebook'">
+              <input class="input" v-model="facebookPlan.url" placeholder="Facebook URL" />
+              <input class="input" v-model="facebookPlan.keyword" placeholder="搜索关键词" />
+            </template>
+          </div>
+          <div class="section-actions" style="margin-top:8px;">
+            <button class="btn secondary" @click="syncPayloadFromForm">更新到 Payload</button>
+          </div>
+        </div>
+
+        <details v-if="editorMode === 'json'" class="card card-dark">
+          <summary style="cursor:pointer;font-weight:700;">高级 JSON 折叠区（点击展开编辑）</summary>
+          <div class="muted" style="margin-top:8px;">支持直接粘贴编排 JSON；保存时按当前内容创建任务。</div>
+          <textarea class="input" rows="12" v-model="form.payloadJson" placeholder="任务 PayloadJson" style="margin-top:8px;"></textarea>
+        </details>
+
+        <div v-if="editorMode === 'form'" class="card card-dark">
+          <div style="font-weight:700;">编排预览（只读）</div>
+          <div class="muted">按步骤顺序预览当前 payload，帮助快速检查编排是否正确。</div>
+          <div v-if="payloadPreviewError" class="muted" style="color:#ff9a9a;margin-top:6px;">{{ payloadPreviewError }}</div>
+          <div v-else style="margin-top:8px;">
+            <div v-for="(step, idx) in payloadSteps" :key="step.id || idx" class="muted" style="margin-bottom:4px;">
+              {{ idx + 1 }}. {{ step.id || '(无ID)' }} - {{ step.type || '(无类型)' }} - {{ step.data?.label || '-' }}
+            </div>
+          </div>
+        </div>
 
         <div class="section-actions">
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
-          <button class="btn secondary" @click="fillExample">填充示例</button>
-          <button class="btn secondary" @click="fillTikTokExample">TikTok示例</button>
+          <button class="btn secondary" @click="applyTemplate">填充当前模板</button>
           <button class="btn secondary" @click="load">刷新</button>
         </div>
 
@@ -157,6 +210,30 @@ const form = reactive({
   priority: 100,
   payloadJson: '{}'
 })
+const selectedTemplate = ref('tiktok')
+const editorMode = ref('form')
+
+const tiktokPlan = reactive({
+  baseUrl: 'http://localhost:3001',
+  username: 'alice',
+  password: '123456',
+  minVideos: 3,
+  maxVideos: 8,
+  minWatchMs: 3000,
+  maxWatchMs: 9000,
+  minLikes: 1,
+  maxLikes: 4,
+  minComments: 1,
+  maxComments: 3
+})
+const baiduPlan = reactive({
+  url: 'https://www.baidu.com',
+  keyword: 'BrowserAgentPlatform 自动化测试'
+})
+const facebookPlan = reactive({
+  url: 'https://www.facebook.com',
+  keyword: 'automation testing'
+})
 
 const tiktokPlan = reactive({
   baseUrl: 'http://localhost:3001',
@@ -175,6 +252,27 @@ const tiktokPlan = reactive({
 const agentOptions = computed(() => agents.value)
 const profileOptions = computed(() => profiles.value)
 const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
+const templateLabel = computed(() => selectedTemplate.value === 'tiktok'
+  ? 'TikTok'
+  : selectedTemplate.value === 'baidu'
+    ? 'Baidu'
+    : 'Facebook')
+const payloadSteps = computed(() => {
+  try {
+    const parsed = JSON.parse(form.payloadJson || '{}')
+    return Array.isArray(parsed.steps) ? parsed.steps : []
+  } catch {
+    return []
+  }
+})
+const payloadPreviewError = computed(() => {
+  try {
+    JSON.parse(form.payloadJson || '{}')
+    return ''
+  } catch (err) {
+    return `PayloadJson 解析失败：${err?.message || 'unknown error'}`
+  }
+})
 
 function shortText(text, max = 120) {
   if (!text) return '-'
@@ -182,13 +280,12 @@ function shortText(text, max = 120) {
   return value.length > max ? `${value.slice(0, max)}...` : value
 }
 
-function fillExample() {
-  form.name = '百度搜索示例流程'
-  form.payloadJson = JSON.stringify({
+function buildBaiduPayload() {
+  return {
     steps: [
-      { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: 'https://www.baidu.com' } },
+      { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: baiduPlan.url } },
       { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: 'textarea[name=\"wd\"]', timeout: 15000 } },
-      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'textarea[name=\"wd\"]', value: 'BrowserAgentPlatform 自动化测试' } },
+      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'textarea[name=\"wd\"]', value: baiduPlan.keyword } },
       { id: 'step_click_search', type: 'click', data: { label: '点击搜索按钮', selector: '#su' } },
       { id: 'step_wait_result', type: 'wait_for_element', data: { label: '等待结果区域', selector: '#content_left', timeout: 15000 } },
       { id: 'step_extract_title', type: 'extract_text', data: { label: '提取首条结果标题', selector: '#content_left h3' } },
@@ -202,7 +299,28 @@ function fillExample() {
       { source: 'step_wait_result', target: 'step_extract_title' },
       { source: 'step_extract_title', target: 'step_done' }
     ]
-  }, null, 2)
+  }
+}
+
+function buildFacebookPayload() {
+  return {
+    steps: [
+      { id: 'step_open', type: 'open', data: { label: '打开 Facebook', url: facebookPlan.url } },
+      { id: 'step_wait_search', type: 'wait_for_element', data: { label: '等待搜索框', selector: 'input[placeholder*=\"Search\"], input[type=\"search\"]', timeout: 15000 } },
+      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'input[placeholder*=\"Search\"], input[type=\"search\"]', value: facebookPlan.keyword } },
+      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
+    ],
+    edges: [
+      { source: 'step_open', target: 'step_wait_search' },
+      { source: 'step_wait_search', target: 'step_type_keyword' },
+      { source: 'step_type_keyword', target: 'step_done' }
+    ]
+  }
+}
+
+function fillExample() {
+  form.name = '百度搜索示例流程'
+  form.payloadJson = JSON.stringify(buildBaiduPayload(), null, 2)
 }
 
 function fillTikTokExample() {
@@ -231,6 +349,28 @@ function fillTikTokExample() {
     ],
     edges: [{ source: 'tiktok_session', target: 'step_done' }]
   }, null, 2)
+}
+
+function fillFacebookExample() {
+  form.name = 'Facebook 搜索示例流程'
+  form.payloadJson = JSON.stringify(buildFacebookPayload(), null, 2)
+}
+
+function applyTemplate() {
+  if (selectedTemplate.value === 'tiktok') {
+    fillTikTokExample()
+    return
+  }
+  if (selectedTemplate.value === 'facebook') {
+    fillFacebookExample()
+    return
+  }
+  fillExample()
+}
+
+function syncPayloadFromForm() {
+  applyTemplate()
+  message.value = '已从配置表单更新 PayloadJson。'
 }
 
 async function load() {
@@ -302,6 +442,7 @@ async function save() {
 }
 
 onMounted(async () => {
+  applyTemplate()
   await load()
   timer = setInterval(load, 5000)
 })
