@@ -1,11 +1,13 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Collections.Concurrent;
 
 namespace BrowserAgentPlatform.Api.Services;
 
 public class AgentRequestSecurityService
 {
     private readonly IConfiguration _configuration;
+    private static readonly ConcurrentDictionary<string, long> SeenNonces = new();
 
     public AgentRequestSecurityService(IConfiguration configuration)
     {
@@ -22,7 +24,8 @@ public class AgentRequestSecurityService
 
         var tsHeader = request.Headers["x-agent-ts"].FirstOrDefault();
         var sigHeader = request.Headers["x-agent-signature"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(tsHeader) || string.IsNullOrWhiteSpace(sigHeader))
+        var nonceHeader = request.Headers["x-agent-nonce"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(tsHeader) || string.IsNullOrWhiteSpace(sigHeader) || string.IsNullOrWhiteSpace(nonceHeader))
         {
             return (false, "missing security headers");
         }
@@ -38,7 +41,14 @@ public class AgentRequestSecurityService
             return (false, "timestamp outside allowed skew");
         }
 
-        var payload = $"{agentKey}:{unixTs}";
+        CleanupExpiredNonces(now);
+        var nonceKey = $"{agentKey}:{unixTs}:{nonceHeader}";
+        if (!SeenNonces.TryAdd(nonceKey, now + 300))
+        {
+            return (false, "replayed nonce");
+        }
+
+        var payload = $"{agentKey}:{unixTs}:{nonceHeader}";
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(sharedSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         var expected = Convert.ToHexString(hash).ToLowerInvariant();
@@ -48,5 +58,13 @@ public class AgentRequestSecurityService
         }
 
         return (true, "ok");
+    }
+
+    private static void CleanupExpiredNonces(long now)
+    {
+        foreach (var item in SeenNonces)
+        {
+            if (item.Value < now) SeenNonces.TryRemove(item.Key, out _);
+        }
     }
 }

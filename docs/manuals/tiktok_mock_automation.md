@@ -40,7 +40,7 @@
         "minComments": 1,
         "maxComments": 3,
         "behaviorProfile": "balanced",
-        "commentProvider": "rule",
+        "commentProvider": "deepseek",
         "watchPattern": "engaged",
         "commentStyle": "friendly",
         "typingMinDelayMs": 35,
@@ -73,7 +73,7 @@
 - `watchPattern`：`explore / engaged / fatigue`，控制停留时长曲线，不再是纯均匀随机。
 - `behaviorProfile`：`conservative / balanced / aggressive`，用于一键套用拟人化参数组合。
 - `commentStyle`：`friendly / short / question / emoji_light`，评论生成多策略。
-- `commentProvider`：`rule / openai`，`openai` 失败时自动降级到规则生成。
+- `commentProvider`：`rule / openai / deepseek`，外部模型失败时自动降级到规则生成。
 - `typing*`：控制输入速度、错字率、回删概率，提升拟人化。
 - `likeByKeywords/commentByKeywords`：行为决策规则，命中关键词时提高点赞/评论概率。
 
@@ -90,3 +90,22 @@
 
 - `TikTok示例` 按钮：一键填充 Payload；
 - `TikTok 快速配置` 面板：可直接设置最小/最大视频数、停留时长、点赞/评论数量，再点击 `TikTok示例` 生成任务。
+- “最近运行”支持一键 `重跑`，会复制原 run 对应任务配置并重新入队。
+
+## DeepSeek 配置（Agent）
+
+在 `BrowserAgentPlatform.Agent/appsettings.json` 中：
+
+```json
+{
+  "Platform": {
+    "CommentAi": {
+      "Provider": "deepseek",
+      "Endpoint": "https://api.deepseek.com/v1/chat/completions",
+      "ApiKey": "你的DeepSeekKey",
+      "Model": "deepseek-chat",
+      "TimeoutSeconds": 12
+    }
+  }
+}
+```

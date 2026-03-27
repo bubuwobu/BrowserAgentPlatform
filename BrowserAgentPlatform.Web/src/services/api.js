@@ -51,6 +51,7 @@ export const api = {
   createTask: (body) => request('/api/tasks', { method: 'POST', body: JSON.stringify(body) }),
   runDetail: (id) => request(`/api/tasks/runs/${id}`),
   runIsolationReport: (runId) => request(`/api/tasks/runs/${runId}/isolation-report`),
+  replayRun: (runId) => request(`/api/tasks/runs/${runId}/replay`, { method: 'POST' }),
 
   observabilityOverview: () => request('/api/observability/overview'),
   auditEvents: (take = 200) => request(`/api/observability/audit-events?take=${take}`),

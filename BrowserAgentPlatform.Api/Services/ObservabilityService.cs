@@ -43,6 +43,8 @@ public class ObservabilityService
         var typingDelayMetrics = new List<double>();
         var commentDuplicateRates = new List<double>();
         var anomalyRates = new List<double>();
+        var providerDistribution = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var profileDistribution = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var resultJson in behaviorRuns)
         {
             if (string.IsNullOrWhiteSpace(resultJson)) continue;
@@ -56,6 +58,16 @@ public class ObservabilityService
                     if (behavior.TryGetProperty("avgTypingDelayMs", out var typing) && typing.ValueKind == JsonValueKind.Number) typingDelayMetrics.Add(typing.GetDouble());
                     if (behavior.TryGetProperty("commentDuplicateRate", out var duplicateRate) && duplicateRate.ValueKind == JsonValueKind.Number) commentDuplicateRates.Add(duplicateRate.GetDouble());
                     if (behavior.TryGetProperty("anomalyRate", out var anomalyRate) && anomalyRate.ValueKind == JsonValueKind.Number) anomalyRates.Add(anomalyRate.GetDouble());
+                    if (behavior.TryGetProperty("commentProvider", out var provider) && provider.ValueKind == JsonValueKind.String)
+                    {
+                        var key = provider.GetString() ?? "unknown";
+                        providerDistribution[key] = providerDistribution.TryGetValue(key, out var count) ? count + 1 : 1;
+                    }
+                    if (behavior.TryGetProperty("behaviorProfile", out var profile) && profile.ValueKind == JsonValueKind.String)
+                    {
+                        var key = profile.GetString() ?? "unknown";
+                        profileDistribution[key] = profileDistribution.TryGetValue(key, out var count) ? count + 1 : 1;
+                    }
                 }
             }
             catch
@@ -79,10 +91,26 @@ public class ObservabilityService
             {
                 sampledRuns24h = typingDelayMetrics.Count,
                 avgTypingDelayMs24h = typingDelayMetrics.Count == 0 ? 0 : typingDelayMetrics.Average(),
+                p50TypingDelayMs24h = Percentile(typingDelayMetrics, 0.5),
+                p90TypingDelayMs24h = Percentile(typingDelayMetrics, 0.9),
                 avgCommentDuplicateRate24h = commentDuplicateRates.Count == 0 ? 0 : commentDuplicateRates.Average(),
                 avgAnomalyRate24h = anomalyRates.Count == 0 ? 0 : anomalyRates.Average()
             },
+            behaviorDimensions = new
+            {
+                providerDistribution,
+                profileDistribution
+            },
             agents = new { onlineAgents }
         };
+    }
+
+    private static double Percentile(List<double> values, double percentile)
+    {
+        if (values.Count == 0) return 0;
+        var sorted = values.OrderBy(x => x).ToList();
+        var index = (int)Math.Ceiling(percentile * sorted.Count) - 1;
+        index = Math.Clamp(index, 0, sorted.Count - 1);
+        return sorted[index];
     }
 }

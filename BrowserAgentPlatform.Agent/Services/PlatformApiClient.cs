@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using BrowserAgentPlatform.Agent.Contracts;
 using BrowserAgentPlatform.Agent.Models;
@@ -23,22 +25,28 @@ public class PlatformApiClient
         }
     }
 
-    public Task RegisterAsync() => _http.PostAsJsonAsync("api/agents/register", new AgentRegisterRequest
+    public async Task RegisterAsync()
     {
-        AgentKey = _options.AgentKey,
-        Name = _options.Name,
-        MachineName = _options.MachineName,
-        MaxParallelRuns = _options.MaxParallelRuns,
-        SchedulerTags = _options.SchedulerTags
-    });
+        using var message = BuildSignedJsonRequest(HttpMethod.Post, "api/agents/register", new AgentRegisterRequest
+        {
+            AgentKey = _options.AgentKey,
+            Name = _options.Name,
+            MachineName = _options.MachineName,
+            MaxParallelRuns = _options.MaxParallelRuns,
+            SchedulerTags = _options.SchedulerTags
+        });
+        using var response = await _http.SendAsync(message);
+        response.EnsureSuccessStatusCode();
+    }
 
     public async Task<List<JsonElement>> HeartbeatAsync(int currentRuns)
     {
-        var response = await _http.PostAsJsonAsync("api/agents/heartbeat", new AgentHeartbeatRequest
+        using var message = BuildSignedJsonRequest(HttpMethod.Post, "api/agents/heartbeat", new AgentHeartbeatRequest
         {
             AgentKey = _options.AgentKey,
             CurrentRuns = currentRuns
         });
+        var response = await _http.SendAsync(message);
 
         response.EnsureSuccessStatusCode();
 
@@ -57,14 +65,16 @@ public class PlatformApiClient
 
     public async Task<AgentPullResponse?> PullAsync()
     {
-        var response = await _http.PostAsync($"api/agents/pull/{_options.AgentKey}", null);
+        using var message = BuildSignedRequest(HttpMethod.Post, $"api/agents/pull/{_options.AgentKey}");
+        var response = await _http.SendAsync(message);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<AgentPullResponse>(_json);
     }
 
     public async Task ReportProgressAsync(AgentProgressRequest request)
     {
-        var response = await _http.PostAsJsonAsync("api/agents/report-progress", request);
+        using var message = BuildSignedJsonRequest(HttpMethod.Post, "api/agents/report-progress", request);
+        var response = await _http.SendAsync(message);
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync();
@@ -74,11 +84,37 @@ public class PlatformApiClient
 
     public async Task ReportCompleteAsync(AgentCompleteRequest request)
     {
-        var response = await _http.PostAsJsonAsync("api/agents/report-complete", request);
+        using var message = BuildSignedJsonRequest(HttpMethod.Post, "api/agents/report-complete", request);
+        var response = await _http.SendAsync(message);
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadAsStringAsync();
             throw new InvalidOperationException($"report-complete failed: {(int)response.StatusCode} {body}");
         }
+    }
+
+    private HttpRequestMessage BuildSignedJsonRequest(HttpMethod method, string path, object body)
+    {
+        var msg = BuildSignedRequest(method, path);
+        msg.Content = JsonContent.Create(body);
+        return msg;
+    }
+
+    private HttpRequestMessage BuildSignedRequest(HttpMethod method, string path)
+    {
+        var msg = new HttpRequestMessage(method, path);
+        var secret = _options.AgentSecuritySharedSecret;
+        if (string.IsNullOrWhiteSpace(secret)) return msg;
+
+        var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var nonce = Guid.NewGuid().ToString("N");
+        var payload = $"{_options.AgentKey}:{ts}:{nonce}";
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var signature = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
+
+        msg.Headers.Add("x-agent-ts", ts.ToString());
+        msg.Headers.Add("x-agent-nonce", nonce);
+        msg.Headers.Add("x-agent-signature", signature);
+        return msg;
     }
 }

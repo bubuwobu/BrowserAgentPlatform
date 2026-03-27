@@ -181,7 +181,10 @@
               <div class="muted">url={{ run.currentUrl || '-' }}</div>
               <div class="muted">result={{ shortText(run.resultJson || '-', 180) }}</div>
             </div>
-            <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
+              <div style="display:grid;gap:8px;">
+                <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
+                <button class="btn secondary" @click="replay(run.id)">重跑</button>
+              </div>
           </div>
         </div>
       </div>
@@ -349,7 +352,7 @@ function fillTikTokExample() {
           minComments: tiktokPlan.minComments,
           maxComments: tiktokPlan.maxComments,
           behaviorProfile: 'balanced',
-          commentProvider: 'rule',
+          commentProvider: 'deepseek',
           watchPattern: 'engaged',
           commentStyle: 'friendly',
           typingMinDelayMs: 35,
@@ -460,6 +463,16 @@ async function save() {
     message.value = err.message || '创建任务失败'
   } finally {
     saving.value = false
+  }
+}
+
+async function replay(runId) {
+  try {
+    const res = await api.replayRun(runId)
+    message.value = `已创建重跑任务，run #${res.replayRunId}`
+    await load()
+  } catch (err) {
+    message.value = err.message || '重跑失败'
   }
 }
 

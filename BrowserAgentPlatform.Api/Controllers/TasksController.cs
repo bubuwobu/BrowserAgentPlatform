@@ -132,4 +132,40 @@ public class TasksController : ControllerBase
             .ToListAsync();
         return Ok(reports);
     }
+
+    [HttpPost("runs/{runId:long}/replay")]
+    public async Task<IActionResult> Replay(long runId)
+    {
+        var sourceRun = await _db.TaskRuns.FindAsync(runId);
+        if (sourceRun is null) return NotFound("source run not found");
+
+        var sourceTask = await _db.Tasks.FindAsync(sourceRun.TaskId);
+        if (sourceTask is null) return NotFound("source task not found");
+
+        var replayTask = new WorkflowTask
+        {
+            Name = $"{sourceTask.Name} (replay {DateTime.UtcNow:yyyyMMddHHmmss})",
+            BrowserProfileId = sourceTask.BrowserProfileId,
+            SchedulingStrategy = sourceTask.SchedulingStrategy,
+            PreferredAgentId = sourceTask.PreferredAgentId,
+            PayloadJson = sourceTask.PayloadJson,
+            RetryPolicyJson = sourceTask.RetryPolicyJson,
+            Priority = sourceTask.Priority,
+            TimeoutSeconds = sourceTask.TimeoutSeconds,
+            Status = "queued"
+        };
+        _db.Tasks.Add(replayTask);
+        await _db.SaveChangesAsync();
+
+        var replayRun = new TaskRun
+        {
+            TaskId = replayTask.Id,
+            BrowserProfileId = replayTask.BrowserProfileId,
+            Status = "queued"
+        };
+        _db.TaskRuns.Add(replayRun);
+        await _db.SaveChangesAsync();
+
+        return Ok(new { ok = true, sourceRunId = runId, replayTaskId = replayTask.Id, replayRunId = replayRun.Id });
+    }
 }
