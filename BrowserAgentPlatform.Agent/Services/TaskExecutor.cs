@@ -75,7 +75,15 @@ public class TaskExecutor
                         await page.ClickAsync(data.GetProperty("selector").GetString()!);
                         break;
                     case "type":
-                        await page.FillAsync(data.GetProperty("selector").GetString()!, data.GetProperty("value").GetString() ?? "");
+                        await HumanTypeAsync(
+                            page,
+                            data.GetProperty("selector").GetString()!,
+                            data.GetProperty("value").GetString() ?? "",
+                            data.TryGetProperty("minKeyDelayMs", out var minTypeDelay) ? minTypeDelay.GetInt32() : 35,
+                            data.TryGetProperty("maxKeyDelayMs", out var maxTypeDelay) ? maxTypeDelay.GetInt32() : 160,
+                            data.TryGetProperty("typoRate", out var typeTypoRate) ? typeTypoRate.GetDouble() : 0.02,
+                            data.TryGetProperty("backspaceRate", out var typeBackspaceRate) ? typeBackspaceRate.GetDouble() : 0.02
+                        );
                         break;
                     case "wait_for_element":
                         await page.WaitForSelectorAsync(data.GetProperty("selector").GetString()!, new() { Timeout = data.TryGetProperty("timeout", out var timeout) ? timeout.GetInt32() : 10000 });
@@ -252,6 +260,18 @@ public class TaskExecutor
         var maxLikes = data.TryGetProperty("maxLikes", out var maxL) ? Math.Max(minLikes, maxL.GetInt32()) : 2;
         var minComments = data.TryGetProperty("minComments", out var minC) ? Math.Max(0, minC.GetInt32()) : 0;
         var maxComments = data.TryGetProperty("maxComments", out var maxC) ? Math.Max(minComments, maxC.GetInt32()) : 2;
+        var watchPattern = data.TryGetProperty("watchPattern", out var watchPatternEl) ? (watchPatternEl.GetString() ?? "engaged") : "engaged";
+        var commentStyle = data.TryGetProperty("commentStyle", out var commentStyleEl) ? (commentStyleEl.GetString() ?? "friendly") : "friendly";
+
+        var typingMinDelayMs = data.TryGetProperty("typingMinDelayMs", out var typeMinEl) ? Math.Clamp(typeMinEl.GetInt32(), 15, 600) : 35;
+        var typingMaxDelayMs = data.TryGetProperty("typingMaxDelayMs", out var typeMaxEl) ? Math.Clamp(typeMaxEl.GetInt32(), typingMinDelayMs, 800) : 170;
+        var typoRate = data.TryGetProperty("typingTypoRate", out var typoEl) ? Math.Clamp(typoEl.GetDouble(), 0, 0.3) : 0.025;
+        var backspaceRate = data.TryGetProperty("typingBackspaceRate", out var backspaceEl) ? Math.Clamp(backspaceEl.GetDouble(), 0, 0.4) : 0.02;
+        var commentCooldownMinMs = data.TryGetProperty("commentCooldownMinMs", out var ccMinEl) ? Math.Clamp(ccMinEl.GetInt32(), 500, 10000) : 2200;
+        var commentCooldownMaxMs = data.TryGetProperty("commentCooldownMaxMs", out var ccMaxEl) ? Math.Clamp(ccMaxEl.GetInt32(), commentCooldownMinMs, 20000) : 7200;
+
+        var likeKeywords = ParseKeywords(data, "likeByKeywords");
+        var commentKeywords = ParseKeywords(data, "commentByKeywords");
 
         var videoTarget = Random.Shared.Next(minVideos, maxVideos + 1);
         var likeTarget = Math.Min(videoTarget, Random.Shared.Next(minLikes, maxLikes + 1));
@@ -259,11 +279,19 @@ public class TaskExecutor
         var liked = 0;
         var commented = 0;
         var watched = 0;
+        var anomalyCount = 0;
+        var watchDurations = new List<int>();
+        var typedCharCount = 0;
+        var typedTimeMs = 0;
+        var commentHistory = new List<string>();
 
         await page.GotoAsync($"{baseUrl}/login");
         await page.WaitForSelectorAsync("[data-testid='login-form']", new() { Timeout = 15000 });
-        await page.FillAsync("[data-testid='username-input']", username);
-        await page.FillAsync("[data-testid='password-input']", password);
+        typedTimeMs += await HumanTypeAsync(page, "[data-testid='username-input']", username, typingMinDelayMs, typingMaxDelayMs, typoRate, backspaceRate);
+        typedCharCount += username.Length;
+        typedTimeMs += await HumanTypeAsync(page, "[data-testid='password-input']", password, typingMinDelayMs, typingMaxDelayMs, typoRate, backspaceRate);
+        typedCharCount += password.Length;
+        await page.WaitForTimeoutAsync(Random.Shared.Next(120, 680));
         await page.ClickAsync("[data-testid='login-submit']");
         await page.WaitForURLAsync(url => url.Contains("/feed"), new() { Timeout = 15000 });
         await page.WaitForSelectorAsync("[data-testid='tt-video-card'].active", new() { Timeout = 15000 });
@@ -272,36 +300,59 @@ public class TaskExecutor
         {
             await page.WaitForSelectorAsync("[data-testid='tt-video-card'].active", new() { Timeout = 10000 });
             var active = page.Locator("[data-testid='tt-video-card'].active");
-            var watchMs = Random.Shared.Next(minWatchMs, maxWatchMs + 1);
+            var caption = (await active.Locator("[data-testid='tt-caption']").TextContentAsync())?.Trim() ?? "";
+
+            var watchMs = CalculateWatchMs(i, videoTarget, minWatchMs, maxWatchMs, watchPattern);
+            watchDurations.Add(watchMs);
             await page.WaitForTimeoutAsync(watchMs);
             watched++;
 
-            if (liked < likeTarget && (((likeTarget - liked) >= (videoTarget - i - 1)) || Random.Shared.NextDouble() > 0.45))
+            if (Random.Shared.NextDouble() < 0.18)
+            {
+                await page.Mouse.WheelAsync(0, Random.Shared.Next(120, 520));
+                await page.WaitForTimeoutAsync(Random.Shared.Next(80, 360));
+            }
+
+            var likeBias = likeKeywords.Count == 0 || MatchesAnyKeyword(caption, likeKeywords) ? 0.65 : 0.35;
+            var shouldLike = liked < likeTarget &&
+                (((likeTarget - liked) >= (videoTarget - i - 1)) || Random.Shared.NextDouble() < likeBias);
+            if (shouldLike)
             {
                 await active.Locator("[data-testid='tt-like-btn']").ClickAsync();
                 liked++;
-                await page.WaitForTimeoutAsync(200);
+                await page.WaitForTimeoutAsync(Random.Shared.Next(140, 480));
             }
 
-            if (commented < commentTarget && (((commentTarget - commented) >= (videoTarget - i - 1)) || Random.Shared.NextDouble() > 0.5))
+            var commentBias = commentKeywords.Count == 0 || MatchesAnyKeyword(caption, commentKeywords) ? 0.60 : 0.30;
+            var shouldComment = commented < commentTarget &&
+                (((commentTarget - commented) >= (videoTarget - i - 1)) || Random.Shared.NextDouble() < commentBias);
+            if (shouldComment)
             {
                 await active.Locator("[data-testid='tt-comment-toggle']").ClickAsync();
                 await page.WaitForSelectorAsync("[data-testid='tt-comment-panel']", new() { Timeout = 5000 });
-                var commentText = await GenerateAiLikeCommentAsync(page, active);
-                await page.FillAsync("[data-testid='tt-comment-input']", commentText);
+                var commentText = await GenerateAiLikeCommentAsync(page, active, commentStyle, commentHistory);
+                typedTimeMs += await HumanTypeAsync(page, "[data-testid='tt-comment-input']", commentText, typingMinDelayMs, typingMaxDelayMs, typoRate, backspaceRate);
+                typedCharCount += commentText.Length;
                 await page.ClickAsync("[data-testid='tt-comment-submit']");
+                commentHistory.Add(commentText);
                 commented++;
-                await page.WaitForTimeoutAsync(350);
+                await page.WaitForTimeoutAsync(Random.Shared.Next(commentCooldownMinMs, commentCooldownMaxMs + 1));
                 var closeBtn = page.Locator("[data-testid='tt-comment-close']");
                 if (await closeBtn.CountAsync() > 0) await closeBtn.ClickAsync();
             }
 
+            if (watchMs < minWatchMs + 300) anomalyCount++;
             if (i < videoTarget - 1)
             {
                 await page.ClickAsync("[data-testid='tt-nav-next']");
-                await page.WaitForTimeoutAsync(650);
+                await page.WaitForTimeoutAsync(Random.Shared.Next(380, 960));
             }
         }
+
+        var duplicateComments = commentHistory
+            .GroupBy(x => x.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(x => x.Count() > 1)
+            .Sum(x => x.Count() - 1);
 
         return new
         {
@@ -312,24 +363,115 @@ public class TaskExecutor
             likedVideos = liked,
             likeTarget,
             commentedVideos = commented,
-            commentTarget
+            commentTarget,
+            behaviorMetrics = new
+            {
+                avgWatchMs = watchDurations.Count == 0 ? 0 : watchDurations.Average(),
+                watchPattern,
+                avgTypingDelayMs = typedCharCount == 0 ? 0 : (double)typedTimeMs / typedCharCount,
+                typingChars = typedCharCount,
+                commentDuplicateRate = commentHistory.Count == 0 ? 0 : (double)duplicateComments / commentHistory.Count,
+                anomalyRate = watched == 0 ? 0 : (double)anomalyCount / watched
+            }
         };
     }
 
-    private static async Task<string> GenerateAiLikeCommentAsync(IPage page, ILocator activeCard)
+    private static int CalculateWatchMs(int index, int total, int minMs, int maxMs, string pattern)
+    {
+        if (maxMs <= minMs) return minMs;
+        var progress = total <= 1 ? 0.5 : (double)index / (total - 1);
+        var span = maxMs - minMs;
+        return pattern switch
+        {
+            "explore" => minMs + (int)(span * (0.2 + 0.8 * Random.Shared.NextDouble() * (1 - progress * 0.6))),
+            "fatigue" => minMs + (int)(span * Math.Max(0.15, 0.85 - progress * 0.55 + Random.Shared.NextDouble() * 0.2)),
+            _ => minMs + (int)(span * (0.35 + 0.55 * Math.Abs(Math.Sin((progress + Random.Shared.NextDouble() * 0.15) * Math.PI))))
+        };
+    }
+
+    private static List<string> ParseKeywords(JsonElement data, string propertyName)
+    {
+        if (!data.TryGetProperty(propertyName, out var keywordsEl) || keywordsEl.ValueKind != JsonValueKind.Array) return new List<string>();
+        return keywordsEl.EnumerateArray()
+            .Where(x => x.ValueKind == JsonValueKind.String)
+            .Select(x => (x.GetString() ?? "").Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+    }
+
+    private static bool MatchesAnyKeyword(string text, List<string> keywords)
+    {
+        if (string.IsNullOrWhiteSpace(text) || keywords.Count == 0) return false;
+        return keywords.Any(keyword => text.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static async Task<int> HumanTypeAsync(IPage page, string selector, string text, int minDelayMs, int maxDelayMs, double typoRate, double backspaceRate)
+    {
+        minDelayMs = Math.Clamp(minDelayMs, 10, 600);
+        maxDelayMs = Math.Clamp(maxDelayMs, minDelayMs, 800);
+        typoRate = Math.Clamp(typoRate, 0, 0.4);
+        backspaceRate = Math.Clamp(backspaceRate, 0, 0.5);
+
+        await page.ClickAsync(selector);
+        await page.FillAsync(selector, "");
+        var totalDelay = 0;
+        var chars = text.ToCharArray();
+        foreach (var c in chars)
+        {
+            var delay = Random.Shared.Next(minDelayMs, maxDelayMs + 1);
+            await page.Keyboard.TypeAsync(c.ToString(), new() { Delay = delay });
+            totalDelay += delay;
+
+            if (char.IsLetterOrDigit(c) && Random.Shared.NextDouble() < typoRate)
+            {
+                var typoChar = char.ToLowerInvariant(c) == 'a' ? "s" : "a";
+                var typoDelay = Random.Shared.Next(minDelayMs, maxDelayMs + 1);
+                await page.Keyboard.TypeAsync(typoChar, new() { Delay = typoDelay });
+                totalDelay += typoDelay;
+                if (Random.Shared.NextDouble() < backspaceRate)
+                {
+                    await page.Keyboard.PressAsync("Backspace");
+                    totalDelay += Random.Shared.Next(40, 120);
+                }
+            }
+
+            if (Random.Shared.NextDouble() < 0.09)
+            {
+                var thinkDelay = Random.Shared.Next(120, 900);
+                await page.WaitForTimeoutAsync(thinkDelay);
+                totalDelay += thinkDelay;
+            }
+        }
+        return totalDelay;
+    }
+
+    private static async Task<string> GenerateAiLikeCommentAsync(IPage page, ILocator activeCard, string style, List<string> commentHistory)
     {
         var caption = (await activeCard.Locator("[data-testid='tt-caption']").TextContentAsync())?.Trim() ?? "";
         var comments = await page.Locator("[data-testid='tt-comment-panel'] .tt-comment-text").AllTextContentsAsync();
         var cleaned = comments
             .Select(x => Regex.Replace(x ?? "", "\\s+", " ").Trim())
             .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Take(5)
+            .Take(8)
             .ToList();
 
-        var seed = cleaned.FirstOrDefault() ?? "这个内容很有意思";
-        if (caption.Length > 28) caption = caption[..28];
-        if (seed.Length > 24) seed = seed[..24];
-        return $"看完很有共鸣，{seed}。{(string.IsNullOrWhiteSpace(caption) ? "节奏感很好，支持一下～" : $"“{caption}”这个点我也很喜欢，支持！")}";
+        var seed = cleaned.OrderByDescending(x => x.Length).FirstOrDefault() ?? "这个内容很有意思";
+        if (caption.Length > 32) caption = caption[..32];
+        if (seed.Length > 28) seed = seed[..28];
+
+        var styleText = style switch
+        {
+            "question" => $"这个点很有启发，{seed}，你们平时也会这样做吗？",
+            "short" => $"赞同，{seed}，有收获。",
+            "emoji_light" => $"看完很有共鸣，{seed}，这个细节我很喜欢 🙂",
+            _ => $"看完很有共鸣，{seed}。{(string.IsNullOrWhiteSpace(caption) ? "节奏感很好，支持一下～" : $"“{caption}”这个点我也很喜欢，支持！")}"
+        };
+
+        if (commentHistory.Any(x => x.Equals(styleText, StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"{styleText}（受教了）";
+        }
+        return styleText;
     }
 
     private static string? ResolveNext(string currentId, string type, JsonElement data, Dictionary<string, object?> result, Dictionary<string, List<JsonElement>> edgeMap)

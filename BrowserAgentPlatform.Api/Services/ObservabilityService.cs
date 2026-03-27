@@ -1,5 +1,6 @@
 using BrowserAgentPlatform.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace BrowserAgentPlatform.Api.Services;
 
@@ -32,6 +33,37 @@ public class ObservabilityService
             ? 0
             : durations.Average(x => (x.FinishedAt!.Value - x.StartedAt!.Value).TotalSeconds);
 
+        var behaviorRuns = await _db.TaskRuns
+            .Where(x => x.Status == "completed" && x.FinishedAt >= last24h)
+            .OrderByDescending(x => x.Id)
+            .Take(200)
+            .Select(x => x.ResultJson)
+            .ToListAsync(cancellationToken);
+
+        var typingDelayMetrics = new List<double>();
+        var commentDuplicateRates = new List<double>();
+        var anomalyRates = new List<double>();
+        foreach (var resultJson in behaviorRuns)
+        {
+            if (string.IsNullOrWhiteSpace(resultJson)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(resultJson);
+                foreach (var prop in doc.RootElement.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.Object) continue;
+                    if (!prop.Value.TryGetProperty("behaviorMetrics", out var behavior) || behavior.ValueKind != JsonValueKind.Object) continue;
+                    if (behavior.TryGetProperty("avgTypingDelayMs", out var typing) && typing.ValueKind == JsonValueKind.Number) typingDelayMetrics.Add(typing.GetDouble());
+                    if (behavior.TryGetProperty("commentDuplicateRate", out var duplicateRate) && duplicateRate.ValueKind == JsonValueKind.Number) commentDuplicateRates.Add(duplicateRate.GetDouble());
+                    if (behavior.TryGetProperty("anomalyRate", out var anomalyRate) && anomalyRate.ValueKind == JsonValueKind.Number) anomalyRates.Add(anomalyRate.GetDouble());
+                }
+            }
+            catch
+            {
+                // ignore malformed legacy result json
+            }
+        }
+
         return new
         {
             timestamp = now,
@@ -42,6 +74,13 @@ public class ObservabilityService
                 failed24h,
                 successRate24h = completed24h + failed24h == 0 ? 1 : (double)completed24h / (completed24h + failed24h),
                 avgDurationSeconds24h = avgDurationSeconds
+            },
+            behaviorQuality = new
+            {
+                sampledRuns24h = typingDelayMetrics.Count,
+                avgTypingDelayMs24h = typingDelayMetrics.Count == 0 ? 0 : typingDelayMetrics.Average(),
+                avgCommentDuplicateRate24h = commentDuplicateRates.Count == 0 ? 0 : commentDuplicateRates.Average(),
+                avgAnomalyRate24h = anomalyRates.Count == 0 ? 0 : anomalyRates.Average()
             },
             agents = new { onlineAgents }
         };

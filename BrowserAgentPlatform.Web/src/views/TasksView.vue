@@ -347,7 +347,17 @@ function fillTikTokExample() {
           minLikes: tiktokPlan.minLikes,
           maxLikes: tiktokPlan.maxLikes,
           minComments: tiktokPlan.minComments,
-          maxComments: tiktokPlan.maxComments
+          maxComments: tiktokPlan.maxComments,
+          watchPattern: 'engaged',
+          commentStyle: 'friendly',
+          typingMinDelayMs: 35,
+          typingMaxDelayMs: 170,
+          typingTypoRate: 0.025,
+          typingBackspaceRate: 0.02,
+          commentCooldownMinMs: 2200,
+          commentCooldownMaxMs: 7200,
+          likeByKeywords: ['教程', '经验', '技巧'],
+          commentByKeywords: ['观点', '案例', '经验']
         }
       },
       { id: 'step_done', type: 'end_success', data: { label: '完成' } }
