@@ -348,6 +348,8 @@ function fillTikTokExample() {
           maxLikes: tiktokPlan.maxLikes,
           minComments: tiktokPlan.minComments,
           maxComments: tiktokPlan.maxComments,
+          behaviorProfile: 'balanced',
+          commentProvider: 'rule',
           watchPattern: 'engaged',
           commentStyle: 'friendly',
           typingMinDelayMs: 35,

@@ -39,6 +39,8 @@
         "maxLikes": 4,
         "minComments": 1,
         "maxComments": 3,
+        "behaviorProfile": "balanced",
+        "commentProvider": "rule",
         "watchPattern": "engaged",
         "commentStyle": "friendly",
         "typingMinDelayMs": 35,
@@ -69,7 +71,9 @@
 - `isolationGate`：要求 Profile 在最近 N 分钟内完成隔离检查，否则任务在 Pull 阶段直接失败（错误码 `isolation_gate_failed`）。
 - `assertions`：执行后自动校验结果；任何断言失败都会把 run 标记为 `failed`，并在 `resultJson.assertions` 中给出失败原因。
 - `watchPattern`：`explore / engaged / fatigue`，控制停留时长曲线，不再是纯均匀随机。
+- `behaviorProfile`：`conservative / balanced / aggressive`，用于一键套用拟人化参数组合。
 - `commentStyle`：`friendly / short / question / emoji_light`，评论生成多策略。
+- `commentProvider`：`rule / openai`，`openai` 失败时自动降级到规则生成。
 - `typing*`：控制输入速度、错字率、回删概率，提升拟人化。
 - `likeByKeywords/commentByKeywords`：行为决策规则，命中关键词时提高点赞/评论概率。
 

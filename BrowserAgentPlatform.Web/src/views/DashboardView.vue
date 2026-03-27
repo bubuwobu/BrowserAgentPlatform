@@ -148,20 +148,5 @@ function formatPercent(value) {
   return `${(Number(value) * 100).toFixed(1)}%`
 }
 
-async function resetDemoData() {
-  const confirmed = window.confirm('该操作会清空并重灌 DEMO 数据，是否继续？')
-  if (!confirmed) return
-  resetting.value = true
-  try {
-    await api.resetAndReseedDemoData()
-    await load()
-    window.alert('Demo 数据已重灌完成。')
-  } catch (err) {
-    window.alert(err.message || '重灌失败')
-  } finally {
-    resetting.value = false
-  }
-}
-
 onMounted(load)
 </script>
