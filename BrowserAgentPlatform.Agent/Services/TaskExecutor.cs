@@ -167,30 +167,6 @@ public class TaskExecutor
                 ErrorCode = "executor_error",
                 ErrorMessage = ex.Message
             });
-
-            var endpoint = string.IsNullOrWhiteSpace(_options.CommentAi.Endpoint)
-                ? (normalizedProvider == "deepseek"
-                    ? "https://api.deepseek.com/v1/chat/completions"
-                    : "https://api.openai.com/v1/chat/completions")
-                : _options.CommentAi.Endpoint;
-            using var req = new HttpRequestMessage(HttpMethod.Post, endpoint);
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.CommentAi.ApiKey);
-            req.Content = new StringContent(body, Encoding.UTF8, "application/json");
-            using var res = await CommentAiHttpClient.SendAsync(req, cts.Token);
-            if (!res.IsSuccessStatusCode) return null;
-            var text = await res.Content.ReadAsStringAsync(cts.Token);
-            using var doc = JsonDocument.Parse(text);
-            var content = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
-            if (string.IsNullOrWhiteSpace(content)) return null;
-            return Regex.Replace(content, "\\s+", " ").Trim();
-        }
-        catch
-        {
-            return null;
         }
     }
 
