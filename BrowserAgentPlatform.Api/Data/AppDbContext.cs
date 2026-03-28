@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<FingerprintTemplate> FingerprintTemplates => Set<FingerprintTemplate>();
     public DbSet<BrowserProfile> BrowserProfiles => Set<BrowserProfile>();
     public DbSet<BrowserProfileLock> BrowserProfileLocks => Set<BrowserProfileLock>();
+    public DbSet<Account> Accounts => Set<Account>();
     public DbSet<TaskTemplate> TaskTemplates => Set<TaskTemplate>();
     public DbSet<WorkflowTask> Tasks => Set<WorkflowTask>();
     public DbSet<TaskRun> TaskRuns => Set<TaskRun>();
@@ -36,7 +37,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.DisplayName).HasColumnName("display_name");
             entity.Property(x => x.Role).HasColumnName("role");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
-
             entity.HasIndex(x => x.Username).IsUnique();
         });
 
@@ -54,7 +54,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.SchedulerTags).HasColumnName("scheduler_tags");
             entity.Property(x => x.LastHeartbeatAt).HasColumnName("last_heartbeat_at");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
-
             entity.HasIndex(x => x.AgentKey).IsUnique();
         });
 
@@ -103,8 +102,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.LastUsedAt).HasColumnName("last_used_at");
             entity.Property(x => x.LastIsolationCheckAt).HasColumnName("last_isolation_check_at");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
-
-            entity.HasIndex(x => x.Name);
         });
 
         modelBuilder.Entity<BrowserProfileLock>(entity =>
@@ -120,8 +117,21 @@ public class AppDbContext : DbContext
             entity.Property(x => x.Status).HasColumnName("status");
             entity.Property(x => x.ExpiresAt).HasColumnName("expires_at");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
 
-            entity.HasIndex(x => new { x.ProfileId, x.Status });
+        modelBuilder.Entity<Account>(entity =>
+        {
+            entity.ToTable("accounts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.Name).HasColumnName("name");
+            entity.Property(x => x.Platform).HasColumnName("platform");
+            entity.Property(x => x.Username).HasColumnName("username");
+            entity.Property(x => x.Status).HasColumnName("status");
+            entity.Property(x => x.BrowserProfileId).HasColumnName("browser_profile_id");
+            entity.Property(x => x.CredentialJson).HasColumnName("credential_json").HasColumnType("longtext");
+            entity.Property(x => x.MetadataJson).HasColumnName("metadata_json").HasColumnType("longtext");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
 
         modelBuilder.Entity<TaskTemplate>(entity =>
@@ -141,9 +151,15 @@ public class AppDbContext : DbContext
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.Name).HasColumnName("name");
             entity.Property(x => x.BrowserProfileId).HasColumnName("browser_profile_id");
+            entity.Property(x => x.AccountId).HasColumnName("account_id");
             entity.Property(x => x.SchedulingStrategy).HasColumnName("scheduling_strategy");
             entity.Property(x => x.PreferredAgentId).HasColumnName("preferred_agent_id");
             entity.Property(x => x.Status).HasColumnName("status");
+            entity.Property(x => x.IsEnabled).HasColumnName("is_enabled");
+            entity.Property(x => x.ScheduleType).HasColumnName("schedule_type");
+            entity.Property(x => x.ScheduleConfigJson).HasColumnName("schedule_config_json").HasColumnType("longtext");
+            entity.Property(x => x.NextRunAt).HasColumnName("next_run_at");
+            entity.Property(x => x.LastRunAt).HasColumnName("last_run_at");
             entity.Property(x => x.PayloadJson).HasColumnName("payload_json").HasColumnType("longtext");
             entity.Property(x => x.RetryPolicyJson).HasColumnName("retry_policy_json").HasColumnType("longtext");
             entity.Property(x => x.Priority).HasColumnName("priority");
@@ -174,10 +190,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.StartedAt).HasColumnName("started_at");
             entity.Property(x => x.HeartbeatAt).HasColumnName("heartbeat_at");
             entity.Property(x => x.FinishedAt).HasColumnName("finished_at");
-
-            entity.HasIndex(x => new { x.Status, x.AssignedAgentId });
-            entity.HasIndex(x => new { x.Status, x.CreatedAt });
-            entity.HasIndex(x => x.LeaseToken);
         });
 
         modelBuilder.Entity<TaskRunLog>(entity =>
@@ -215,8 +227,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.PayloadJson).HasColumnName("payload_json").HasColumnType("longtext");
             entity.Property(x => x.Status).HasColumnName("status");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
-
-            entity.HasIndex(x => new { x.AgentId, x.Status, x.CreatedAt });
         });
 
         modelBuilder.Entity<RunIsolationReport>(entity =>
@@ -232,8 +242,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.NetworkCheckJson).HasColumnName("network_check_json").HasColumnType("longtext");
             entity.Property(x => x.Result).HasColumnName("result");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
-
-            entity.HasIndex(x => x.TaskRunId);
         });
 
         modelBuilder.Entity<AuditEvent>(entity =>
@@ -248,9 +256,6 @@ public class AppDbContext : DbContext
             entity.Property(x => x.TargetId).HasColumnName("target_id");
             entity.Property(x => x.DetailsJson).HasColumnName("details_json").HasColumnType("longtext");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
-
-            entity.HasIndex(x => new { x.EventType, x.CreatedAt });
-            entity.HasIndex(x => new { x.ActorType, x.ActorId, x.CreatedAt });
         });
     }
 }

@@ -3,7 +3,7 @@
     <aside v-if="loggedIn" class="sidebar">
       <div class="brand">
         <div class="brand-title">BrowserAgentPlatform</div>
-        <div class="brand-subtitle">Web 控制 + Agent 执行</div>
+        <div class="brand-subtitle">任务编排 + 调度 + 账号绑定</div>
       </div>
 
       <nav class="nav">
@@ -12,6 +12,7 @@
         <RouterLink to="/templates" class="nav-item">模板中心</RouterLink>
         <RouterLink to="/profiles" class="nav-item">Profiles</RouterLink>
         <RouterLink to="/fingerprints" class="nav-item">指纹模板</RouterLink>
+        <RouterLink to="/accounts" class="nav-item">账号中心</RouterLink>
         <RouterLink to="/workbench" class="nav-item">闭环工作台</RouterLink>
         <RouterLink to="/tasks" class="nav-item">任务中心</RouterLink>
         <RouterLink to="/live" class="nav-item">Live 调试</RouterLink>
@@ -24,7 +25,7 @@
       <header v-if="loggedIn" class="topbar">
         <div>
           <div class="topbar-title">控制台</div>
-          <div class="topbar-subtitle">当前版本先以闭环跑通和可视化为第一优先级</div>
+          <div class="topbar-subtitle">第三阶段：继续补交互、确认、调度稳态和编排器易用性</div>
         </div>
       </header>
 
@@ -57,6 +58,9 @@ body {
   font-family: Inter, "Microsoft YaHei", sans-serif;
 }
 a { color: inherit; text-decoration: none; }
+label { display:block; font-size:13px; color:#cbd5e1; margin-bottom:6px; }
+.help { color:#94a3b8; font-size:12px; margin-top:4px; line-height:1.5; }
+.form-field { display:grid; gap:6px; }
 .layout { display: flex; min-height: 100vh; }
 .sidebar {
   width: 250px;
@@ -118,6 +122,7 @@ a { color: inherit; text-decoration: none; }
 .btn.secondary { background: #334155; }
 .btn.warn { background: #ea580c; }
 .btn.success { background: #16a34a; }
+.btn.ghost { background: transparent; border: 1px solid #334155; }
 .input, textarea, select {
   width: 100%;
   background: #020617;
@@ -133,7 +138,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 12px;
   font-weight: 600;
 }
-.badge.running, .badge.online, .badge.completed, .badge.info {
+.badge.running, .badge.online, .badge.completed, .badge.info, .badge.active {
   background: rgba(34,197,94,.15);
   color: #4ade80;
 }
@@ -141,10 +146,33 @@ a { color: inherit; text-decoration: none; }
   background: rgba(59,130,246,.15);
   color: #60a5fa;
 }
-.badge.failed, .badge.offline, .badge.cancelled, .badge.error {
+.badge.failed, .badge.offline, .badge.cancelled, .badge.error, .badge.disabled {
   background: rgba(239,68,68,.15);
   color: #f87171;
 }
 .section-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .muted { color: #94a3b8; font-size: 13px; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 40;
+}
+.modal-panel {
+  width: min(1000px, 96vw);
+  max-height: 88vh;
+  overflow: auto;
+}
+.kv-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 14px;
+}
+@media (max-width: 900px) {
+  .kv-grid { grid-template-columns:1fr; }
+}
 </style>

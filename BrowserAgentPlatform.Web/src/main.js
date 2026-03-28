@@ -7,6 +7,7 @@ import WorkflowBuilderView from './views/WorkflowBuilderView.vue'
 import TemplatesView from './views/TemplatesView.vue'
 import ProfilesView from './views/ProfilesView.vue'
 import FingerprintsView from './views/FingerprintsView.vue'
+import AccountsView from './views/AccountsView.vue'
 import TasksView from './views/TasksView.vue'
 import LiveView from './views/LiveView.vue'
 import WorkbenchView from './views/WorkbenchView.vue'
@@ -19,6 +20,7 @@ const routes = [
   { path: '/templates', component: TemplatesView, meta: { auth: true } },
   { path: '/profiles', component: ProfilesView, meta: { auth: true } },
   { path: '/fingerprints', component: FingerprintsView, meta: { auth: true } },
+  { path: '/accounts', component: AccountsView, meta: { auth: true } },
   { path: '/workbench', component: WorkbenchView, meta: { auth: true } },
   { path: '/tasks', component: TasksView, meta: { auth: true } },
   { path: '/live/:runId?', component: LiveView, meta: { auth: true } }
@@ -28,4 +30,5 @@ const router = createRouter({ history: createWebHistory(), routes })
 router.beforeEach((to) => {
   if (to.meta.auth && !auth.token()) return '/login'
 })
+
 createApp(App).use(router).mount('#app')

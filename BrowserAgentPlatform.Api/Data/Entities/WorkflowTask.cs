@@ -1,12 +1,19 @@
 namespace BrowserAgentPlatform.Api.Data.Entities;
+
 public class WorkflowTask
 {
     public long Id { get; set; }
     public string Name { get; set; } = "";
     public long BrowserProfileId { get; set; }
-    public string SchedulingStrategy { get; set; } = "profile_owner"; // profile_owner preferred_agent least_loaded
+    public long? AccountId { get; set; }
+    public string SchedulingStrategy { get; set; } = "profile_owner";
     public long? PreferredAgentId { get; set; }
-    public string Status { get; set; } = "queued"; // queued leased running completed failed cancelled
+    public string Status { get; set; } = "queued";
+    public bool IsEnabled { get; set; } = true;
+    public string ScheduleType { get; set; } = "manual";
+    public string ScheduleConfigJson { get; set; } = "{}";
+    public DateTime? NextRunAt { get; set; }
+    public DateTime? LastRunAt { get; set; }
     public string PayloadJson { get; set; } = "{}";
     public string RetryPolicyJson { get; set; } = "{}";
     public int Priority { get; set; } = 100;

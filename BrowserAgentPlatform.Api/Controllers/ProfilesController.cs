@@ -17,6 +17,7 @@ public class ProfilesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IsolationPolicyService _isolationPolicyService;
     private readonly AuditService _auditService;
+
     public ProfilesController(AppDbContext db, IsolationPolicyService isolationPolicyService, AuditService auditService)
     {
         _db = db;
@@ -27,28 +28,7 @@ public class ProfilesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
-        var profiles = await _db.BrowserProfiles
-            .OrderByDescending(x => x.Id)
-            .Select(x => new
-            {
-                x.Id,
-                Name = x.Name ?? "",
-                x.OwnerAgentId,
-                x.ProxyId,
-                x.FingerprintTemplateId,
-                Status = x.Status ?? "idle",
-                IsolationLevel = x.IsolationLevel ?? "standard",
-                LocalProfilePath = x.LocalProfilePath ?? "",
-                StorageRootPath = x.StorageRootPath ?? "",
-                DownloadRootPath = x.DownloadRootPath ?? "",
-                StartupArgsJson = x.StartupArgsJson ?? "[]",
-                IsolationPolicyJson = x.IsolationPolicyJson ?? "{}",
-                RuntimeMetaJson = x.RuntimeMetaJson ?? "{}",
-                x.LastIsolationCheckAt,
-                x.LastUsedAt,
-                x.CreatedAt
-            })
-            .ToListAsync();
+        var profiles = await _db.BrowserProfiles.OrderByDescending(x => x.Id).ToListAsync();
         return Ok(profiles);
     }
 
@@ -68,6 +48,7 @@ public class ProfilesController : ControllerBase
             IsolationPolicyJson = request.IsolationPolicyJson ?? "{}",
             IsolationLevel = request.IsolationLevel ?? "standard"
         };
+
         _db.BrowserProfiles.Add(profile);
         await _db.SaveChangesAsync();
         return Ok(profile);
@@ -89,8 +70,20 @@ public class ProfilesController : ControllerBase
         profile.StartupArgsJson = request.StartupArgsJson ?? "[]";
         profile.IsolationPolicyJson = request.IsolationPolicyJson ?? "{}";
         profile.IsolationLevel = request.IsolationLevel ?? "standard";
+
         await _db.SaveChangesAsync();
         return Ok(profile);
+    }
+
+    [HttpDelete("{id:long}")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var profile = await _db.BrowserProfiles.FindAsync(id);
+        if (profile is null) return NotFound();
+
+        _db.BrowserProfiles.Remove(profile);
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
     }
 
     [HttpPost("{id:long}/test-open")]
@@ -107,6 +100,7 @@ public class ProfilesController : ControllerBase
             CommandType = "test_open_profile",
             PayloadJson = $"{{\"profileId\":{profile.Id}}}"
         });
+
         await _db.SaveChangesAsync();
         await _auditService.WriteAsync("profile_test_open", "user", User.Identity?.Name ?? "unknown", "profile", profile.Id.ToString());
         return Ok(new { ok = true });
@@ -126,20 +120,26 @@ public class ProfilesController : ControllerBase
             CommandType = request.Headed ? "takeover_start" : "takeover_stop",
             PayloadJson = $"{{\"profileId\":{profile.Id},\"headed\":{request.Headed.ToString().ToLowerInvariant()}}}"
         });
+
         await _db.SaveChangesAsync();
-        await _auditService.WriteAsync("profile_takeover", "user", User.Identity?.Name ?? "unknown", "profile", profile.Id.ToString(), $"{{\"headed\":{request.Headed.ToString().ToLowerInvariant()}}}");
         return Ok(new { ok = true });
     }
 
     [HttpPost("{id:long}/unlock")]
     public async Task<IActionResult> Unlock(long id)
     {
-        var locks = await _db.BrowserProfileLocks.Where(x => x.ProfileId == id && (x.Status == "reserved" || x.Status == "leased")).ToListAsync();
-        foreach (var item in locks) item.Status = "released";
+        var locks = await _db.BrowserProfileLocks
+            .Where(x => x.ProfileId == id && (x.Status == "reserved" || x.Status == "leased"))
+            .ToListAsync();
+
+        foreach (var item in locks)
+            item.Status = "released";
+
         var profile = await _db.BrowserProfiles.FindAsync(id);
-        if (profile is not null) profile.Status = "idle";
+        if (profile is not null)
+            profile.Status = "idle";
+
         await _db.SaveChangesAsync();
-        await _auditService.WriteAsync("profile_unlock", "user", User.Identity?.Name ?? "unknown", "profile", id.ToString(), $"{{\"released\":{locks.Count}}}");
         return Ok(new { ok = true, released = locks.Count });
     }
 
@@ -161,8 +161,8 @@ public class ProfilesController : ControllerBase
                 result.Warnings
             }
         });
+
         await _db.SaveChangesAsync(cancellationToken);
-        await _auditService.WriteAsync("profile_isolation_check", "user", User.Identity?.Name ?? "unknown", "profile", profile.Id.ToString(), JsonSerializer.Serialize(new { result.Ok, result.Errors, result.Warnings }), cancellationToken);
 
         return Ok(new
         {

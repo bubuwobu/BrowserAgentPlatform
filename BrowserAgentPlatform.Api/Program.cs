@@ -25,8 +25,7 @@ var corsOriginsRaw = builder.Configuration["Cors:WebOrigins"]
                      ?? builder.Configuration["Cors:WebOrigin"]
                      ?? "http://localhost:5173,http://127.0.0.1:5173";
 
-var corsOrigins = corsOriginsRaw
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+var corsOrigins = corsOriginsRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 builder.Services.AddCors(options =>
 {
@@ -85,6 +84,7 @@ builder.Services.AddSingleton<AgentRequestSecurityService>();
 builder.Services.AddHostedService<QueueScanBackgroundService>();
 builder.Services.AddHostedService<LeaseReaperBackgroundService>();
 builder.Services.AddHostedService<RunWatchdogBackgroundService>();
+builder.Services.AddHostedService<TaskScheduleBackgroundService>();
 
 var app = builder.Build();
 
@@ -97,7 +97,6 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseCors("web");
 app.UseAuthentication();
 app.UseAuthorization();

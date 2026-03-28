@@ -1,7 +1,6 @@
 using BrowserAgentPlatform.Api.Data;
 using BrowserAgentPlatform.Api.Data.Entities;
 using BrowserAgentPlatform.Api.Models;
-using BrowserAgentPlatform.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,5 +25,26 @@ public class TemplatesController : ControllerBase
         _db.TaskTemplates.Add(item);
         await _db.SaveChangesAsync();
         return Ok(item);
+    }
+
+    [HttpPut("{id:long}")]
+    public async Task<IActionResult> Update(long id, TaskTemplateRequest request)
+    {
+        var item = await _db.TaskTemplates.FindAsync(id);
+        if (item is null) return NotFound();
+        item.Name = request.Name;
+        item.DefinitionJson = request.DefinitionJson;
+        await _db.SaveChangesAsync();
+        return Ok(item);
+    }
+
+    [HttpDelete("{id:long}")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var item = await _db.TaskTemplates.FindAsync(id);
+        if (item is null) return NotFound();
+        _db.TaskTemplates.Remove(item);
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
     }
 }

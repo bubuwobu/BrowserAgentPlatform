@@ -1,224 +1,191 @@
 <template>
   <div>
     <div class="page-title">任务中心</div>
-    <div class="page-subtitle">创建任务、查看运行记录，并跳转到 Live 调试。</div>
+    <div class="page-subtitle">支持账号绑定、调度配置、真实编辑和立即执行。</div>
 
     <div class="card" style="margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div class="toolbar">
         <div>
           <div style="font-weight:700;">任务操作区</div>
-          <div class="muted">默认只显示列表数据；新增/编辑任务通过弹窗完成。</div>
+          <div class="muted">列表优先；新增与编辑统一在弹窗中完成。</div>
         </div>
         <div class="section-actions">
-          <button class="btn" @click="editorExpanded = true">新增/编辑任务</button>
+          <button class="btn" @click="openCreate">新增任务</button>
           <button class="btn secondary" @click="load">刷新</button>
         </div>
       </div>
       <div v-if="message" class="muted" style="margin-top:8px;">{{ message }}</div>
     </div>
 
-    <div v-if="editorExpanded" class="modal-mask" @click.self="editorExpanded = false">
-      <div class="modal-panel card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <div style="font-weight:700;">任务编辑弹窗</div>
-          <div class="section-actions">
-            <button class="btn secondary" @click="advancedMode = !advancedMode">{{ advancedMode ? '隐藏高级项' : '显示高级项' }}</button>
-            <button class="btn secondary" @click="editorExpanded = false">关闭</button>
-          </div>
-        </div>
-
-      <div class="grid" style="margin-top:12px;">
-        <input class="input" v-model="form.name" placeholder="任务名称" />
-
-        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:8px;">
-          <select class="input" v-model="form.browserProfileId">
-            <option :value="null">请选择 BrowserProfile（必选）</option>
-            <option v-for="item in profileOptions" :key="item.id" :value="item.id">
-              {{ item.id }} - {{ item.name }}（{{ item.status }}）
-            </option>
-          </select>
-
-          <div class="card card-dark" style="padding:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-              <div style="font-weight:700;">编辑模式</div>
-              <div class="section-actions">
-                <button class="btn secondary" @click="editorMode = 'form'" :disabled="editorMode === 'form'">配置表单</button>
-                <button class="btn secondary" @click="editorMode = 'json'" :disabled="editorMode === 'json'">高级 JSON</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <select v-if="advancedMode" class="input" v-model="form.schedulingStrategy">
-          <option value="least_loaded">least_loaded（推荐）</option>
-          <option value="profile_owner">profile_owner（需 Profile 绑定 owner）</option>
-          <option value="preferred_agent">preferred_agent</option>
-        </select>
-
-        <select v-if="advancedMode" class="input" v-model="form.preferredAgentId">
-          <option :value="null">无 preferredAgent</option>
-          <option v-for="item in agentOptions" :key="item.id" :value="item.id">
-            {{ item.id }} - {{ item.name || 'Unnamed Agent' }}（{{ item.status }}）
-          </option>
-        </select>
-
-        <input v-if="advancedMode" class="input" v-model.number="form.priority" type="number" placeholder="优先级" />
-
-        <div v-if="advancedMode" class="card card-dark">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="font-weight:700;">任务模板库</div>
-            <select class="input" style="max-width:220px;" v-model="selectedTemplate">
-              <option value="tiktok">TikTok 模板</option>
-              <option value="baidu">Baidu 模板</option>
-              <option value="facebook">Facebook 模板</option>
-            </select>
-          </div>
-          <div class="muted" style="margin-bottom:8px;">一键切换模板并自动填充对应参数。</div>
-          <div class="section-actions">
-            <button class="btn secondary" @click="applyTemplate">应用当前模板</button>
-          </div>
-        </div>
-
-        <div v-if="editorMode === 'form'" class="card card-dark">
-          <div style="font-weight:700;margin-bottom:8px;">模板参数配置（{{ templateLabel }}）</div>
-          <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;">
-            <template v-if="selectedTemplate === 'tiktok'">
-              <input class="input" v-model="tiktokPlan.baseUrl" placeholder="baseUrl" />
-              <input class="input" v-model="tiktokPlan.username" placeholder="username" />
-              <input class="input" v-model="tiktokPlan.password" placeholder="password" />
-              <input class="input" v-model.number="tiktokPlan.minVideos" type="number" placeholder="最少视频数" />
-              <input class="input" v-model.number="tiktokPlan.maxVideos" type="number" placeholder="最多视频数" />
-              <input class="input" v-model.number="tiktokPlan.minWatchMs" type="number" placeholder="最短停留(ms)" />
-              <input class="input" v-model.number="tiktokPlan.maxWatchMs" type="number" placeholder="最长停留(ms)" />
-              <input class="input" v-model.number="tiktokPlan.minLikes" type="number" placeholder="最少点赞" />
-              <input class="input" v-model.number="tiktokPlan.maxLikes" type="number" placeholder="最多点赞" />
-              <input class="input" v-model.number="tiktokPlan.minComments" type="number" placeholder="最少评论" />
-              <input class="input" v-model.number="tiktokPlan.maxComments" type="number" placeholder="最多评论" />
-              <select class="input" v-model="tiktokPlan.behaviorProfile">
-                <option value="conservative">conservative</option>
-                <option value="balanced">balanced</option>
-                <option value="aggressive">aggressive</option>
-              </select>
-              <select class="input" v-model="tiktokPlan.commentProvider">
-                <option value="rule">rule</option>
-                <option value="deepseek">deepseek</option>
-                <option value="openai">openai</option>
-              </select>
-            </template>
-            <template v-if="selectedTemplate === 'baidu'">
-              <input class="input" v-model="baiduPlan.url" placeholder="Baidu URL" />
-              <input class="input" v-model="baiduPlan.keyword" placeholder="搜索关键词" />
-            </template>
-            <template v-if="selectedTemplate === 'facebook'">
-              <input class="input" v-model="facebookPlan.url" placeholder="Facebook URL" />
-              <input class="input" v-model="facebookPlan.keyword" placeholder="搜索关键词" />
-            </template>
-          </div>
-          <div class="section-actions" style="margin-top:8px;">
-            <button class="btn secondary" @click="syncPayloadFromForm">更新到 Payload</button>
-          </div>
-        </div>
-
-        <details v-if="editorMode === 'json'" class="card card-dark">
-          <summary style="cursor:pointer;font-weight:700;">高级 JSON 折叠区（点击展开编辑）</summary>
-          <div class="muted" style="margin-top:8px;">支持直接粘贴编排 JSON；保存时按当前内容创建任务。</div>
-          <textarea class="input" rows="12" v-model="form.payloadJson" placeholder="任务 PayloadJson" style="margin-top:8px;"></textarea>
-        </details>
-
-        <div v-if="editorMode === 'form'" class="card card-dark">
-          <div style="font-weight:700;">编排预览（只读）</div>
-          <div class="muted">按步骤顺序预览当前 payload，并默认附带 isolationGate + assertions（质量门禁）。</div>
-          <div v-if="payloadPreviewError" class="muted" style="color:#ff9a9a;margin-top:6px;">{{ payloadPreviewError }}</div>
-          <div v-else style="margin-top:8px;">
-            <div v-for="(step, idx) in payloadSteps" :key="step.id || idx" class="muted" style="margin-bottom:4px;">
-              {{ idx + 1 }}. {{ step.id || '(无ID)' }} - {{ step.type || '(无类型)' }} - {{ step.data?.label || '-' }}
-            </div>
-          </div>
-        </div>
-
-        <div class="section-actions">
-          <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
-          <button class="btn secondary" @click="applyTemplate">填充当前模板</button>
-        </div>
-
-        <div class="muted">
-          * BrowserProfile 必选。<br />
-          * `least_loaded`：任意在线 Agent 都可执行（最不容易卡队列）。<br />
-          * `profile_owner`：仅 Profile 的 owner Agent 可执行。<br />
-          * `preferred_agent`：必须再选择 preferredAgent。
-        </div>
-
-      </div>
-    </div>
-    </div>
-
-    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
+    <div class="grid" style="grid-template-columns:1fr 1fr; gap:16px;">
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div>
-            <div style="font-weight:700;">任务列表</div>
-            <div class="muted">这里可以直观看到任务与 Profile / 调度策略的关系。</div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <span class="badge queued">总任务 {{ tasks.length }}</span>
-          <span class="badge completed">已完成 {{ tasks.filter(x => x.status === 'completed').length }}</span>
-          <span class="badge failed">失败 {{ tasks.filter(x => x.status === 'failed').length }}</span>
-        </div>
-
+        <div style="font-weight:700;margin-bottom:12px;">任务列表</div>
         <div v-if="!tasks.length" class="muted">暂无任务</div>
-
         <div v-for="item in tasks" :key="item.id" class="card card-dark" style="margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-            <div style="flex:1;">
+          <div class="toolbar">
+            <div>
               <div style="font-weight:700;">{{ item.name }} #{{ item.id }}</div>
-              <div style="margin-top:8px;">
-                <span class="badge" :class="item.status">{{ item.status }}</span>
-              </div>
-              <div class="muted" style="margin-top:8px;">profile={{ item.browserProfileId }}</div>
-              <div class="muted">strategy={{ item.schedulingStrategy }}</div>
-              <div class="muted">preferredAgentId={{ item.preferredAgentId || '-' }}</div>
-              <div class="muted">priority={{ item.priority }}</div>
-              <div class="muted" style="margin-top:8px;">payload={{ shortText(item.payloadJson, 120) }}</div>
+              <div class="muted">profile={{ item.browserProfileId }} / account={{ item.accountId || '-' }}</div>
+              <div class="muted">schedule={{ item.scheduleType }} / nextRunAt={{ formatTime(item.nextRunAt) }}</div>
             </div>
+            <div class="section-actions">
+              <span class="badge" :class="item.isEnabled ? 'active' : 'disabled'">{{ item.isEnabled ? 'enabled' : 'disabled' }}</span>
+              <button class="btn secondary" @click="openEdit(item)">编辑</button>
+              <button class="btn success" @click="runNow(item.id)">立即执行</button>
+              <button class="btn secondary" @click="toggleEnabled(item.id)">启停</button>
+              <button class="btn warn" @click="askDelete(item.id)">删除</button>
+            </div>
+          </div>
+          <div class="kv-grid muted" style="margin-top:10px;">
+            <div>优先级：{{ item.priority }}</div>
+            <div>超时：{{ item.timeoutSeconds }} 秒</div>
+            <div>调度策略：{{ item.schedulingStrategy }}</div>
+            <div>最近执行：{{ formatTime(item.lastRunAt) }}</div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div>
-            <div style="font-weight:700;">最近运行</div>
-            <div class="muted">创建任务后，这里应该很快出现新的 run。</div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-bottom:10px;">
-          <span class="badge running">运行中 {{ runs.filter(x => x.status === 'running' || x.status === 'leased').length }}</span>
-          <span class="badge completed">已完成 {{ runs.filter(x => x.status === 'completed').length }}</span>
-          <span class="badge failed">失败 {{ runs.filter(x => x.status === 'failed' || x.status === 'dead' || x.status === 'timeout').length }}</span>
-        </div>
-
+        <div style="font-weight:700;margin-bottom:12px;">最近运行</div>
         <div v-if="!runs.length" class="muted">暂无运行记录</div>
-
         <div v-for="run in runs" :key="run.id" class="card card-dark" style="margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-            <div style="flex:1;">
+          <div class="toolbar">
+            <div>
               <div style="font-weight:700;">Run #{{ run.id }}</div>
-              <div style="margin-top:8px;">
-                <span class="badge" :class="run.status">{{ run.status }}</span>
-              </div>
-              <div class="muted" style="margin-top:8px;">task={{ run.taskId }} / profile={{ run.browserProfileId }}</div>
+              <div class="muted">task={{ run.taskId }} / profile={{ run.browserProfileId }}</div>
               <div class="muted">step={{ run.currentStepLabel || '-' }}</div>
-              <div class="muted">url={{ run.currentUrl || '-' }}</div>
-              <div class="muted">result={{ shortText(run.resultJson || '-', 180) }}</div>
             </div>
-              <div style="display:grid;gap:8px;">
-                <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
-                <button class="btn secondary" @click="replay(run.id)">重跑</button>
-              </div>
+            <div class="section-actions">
+              <span class="badge" :class="run.status">{{ run.status }}</span>
+              <RouterLink :to="`/live/${run.id}`" class="btn">查看 Live</RouterLink>
+            </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <ConfirmDialog
+      :open="deleteOpen"
+      title="删除任务"
+      message="删除后，任务本身会被移除。
+已产生的运行记录不会自动回滚。"
+      confirm-text="确认删除"
+      @cancel="deleteOpen = false"
+      @confirm="removeTaskConfirmed"
+    />
+
+    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+      <div class="modal-panel card">
+        <div class="toolbar">
+          <div style="font-weight:700;">{{ editingId ? '编辑任务' : '新增任务' }}</div>
+          <div class="section-actions">
+            <button class="btn secondary" @click="editorMode = editorMode === 'form' ? 'json' : 'form'">{{ editorMode === 'form' ? '切到 JSON' : '切到表单' }}</button>
+            <button class="btn secondary" @click="editorOpen = false">关闭</button>
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+          <FormField label="任务名称" :required="true" help="用于任务中心识别和筛选。">
+            <input class="input" v-model="form.name" placeholder="例如：账号1每日浏览任务" />
+          </FormField>
+
+          <FormField label="绑定账号" help="选择后，如果账号已绑定 BrowserProfile，会自动带出。">
+            <select class="input" v-model="form.accountId" @change="syncProfileFromAccount">
+              <option :value="null">不绑定账号</option>
+              <option v-for="item in accounts" :key="item.id" :value="item.id">{{ item.id }} - {{ item.name }}（{{ item.username }}）</option>
+            </select>
+          </FormField>
+
+          <FormField label="BrowserProfile" :required="true" help="任务实际执行时使用的浏览器身份。">
+            <select class="input" v-model="form.browserProfileId">
+              <option :value="null">请选择 BrowserProfile</option>
+              <option v-for="item in profiles" :key="item.id" :value="item.id">{{ item.id }} - {{ item.name }}（{{ item.status }}）</option>
+            </select>
+          </FormField>
+
+          <FormField label="调度策略（Agent 选择）" help="决定任务由哪个 Agent 拿到。">
+            <select class="input" v-model="form.schedulingStrategy">
+              <option value="least_loaded">least_loaded</option>
+              <option value="profile_owner">profile_owner</option>
+              <option value="preferred_agent">preferred_agent</option>
+            </select>
+          </FormField>
+
+          <FormField v-if="form.schedulingStrategy === 'preferred_agent'" label="指定 Agent">
+            <select class="input" v-model="form.preferredAgentId">
+              <option :value="null">请选择 Agent</option>
+              <option v-for="item in agents" :key="item.id" :value="item.id">{{ item.id }} - {{ item.name }}</option>
+            </select>
+          </FormField>
+
+          <FormField label="是否启用" help="禁用后调度器不会自动生成新的 run。">
+            <select class="input" v-model="form.isEnabled">
+              <option :value="true">true</option>
+              <option :value="false">false</option>
+            </select>
+          </FormField>
+
+          <FormField label="任务调度类型" help="manual 为纯手动，daily_window_random 为每日时间窗随机触发。">
+            <select class="input" v-model="form.scheduleType">
+              <option value="manual">manual</option>
+              <option value="daily_window_random">daily_window_random</option>
+            </select>
+          </FormField>
+
+          <template v-if="form.scheduleType === 'daily_window_random'">
+            <FormField label="开始时间" help="示例：09:00">
+              <input class="input" v-model="scheduleForm.windowStart" placeholder="09:00" />
+            </FormField>
+            <FormField label="结束时间" help="示例：18:00">
+              <input class="input" v-model="scheduleForm.windowEnd" placeholder="18:00" />
+            </FormField>
+            <FormField label="每日最大触发次数" help="当前后端已开始按这个值限制每日创建 run 的上限。">
+              <input class="input" type="number" v-model.number="scheduleForm.maxRunsPerDay" />
+            </FormField>
+            <FormField label="随机分钟步长" help="例如 5 表示按 5 分钟粒度随机。">
+              <input class="input" type="number" v-model.number="scheduleForm.randomMinuteStep" />
+            </FormField>
+          </template>
+
+          <FormField label="优先级" help="数字越大，理论上越优先。">
+            <input class="input" type="number" v-model.number="form.priority" />
+          </FormField>
+
+          <FormField label="超时（秒）">
+            <input class="input" type="number" v-model.number="form.timeoutSeconds" />
+          </FormField>
+        </div>
+
+        <div class="card card-dark" style="margin-top:12px;">
+          <div class="toolbar">
+            <div style="font-weight:700;">Payload 编辑</div>
+            <div class="muted">普通用户推荐用编排器页面维护；这里可直接调整任务 payload。</div>
+          </div>
+
+          <template v-if="editorMode === 'json'">
+            <FormField label="Payload JSON">
+              <textarea class="input" rows="14" v-model="form.payloadJson"></textarea>
+            </FormField>
+          </template>
+
+          <template v-else>
+            <div class="help" style="margin-top:12px;">当前阶段这里保留文本编辑，完整可视化编辑请去“编排器”页面。</div>
+            <textarea class="input" rows="10" v-model="form.payloadJson" style="margin-top:8px;"></textarea>
+          </template>
+        </div>
+
+        <div class="card card-dark" v-if="form.scheduleType === 'daily_window_random'" style="margin-top:12px;">
+          <div style="font-weight:700;margin-bottom:8px;">调度预览</div>
+          <div class="muted">
+            每天会在 {{ scheduleForm.windowStart }} 到 {{ scheduleForm.windowEnd }} 之间，
+            按 {{ scheduleForm.randomMinuteStep }} 分钟粒度随机挑选时间，
+            最多触发 {{ scheduleForm.maxRunsPerDay }} 次。
+          </div>
+        </div>
+
+        <div class="section-actions" style="margin-top:12px;">
+          <button class="btn" @click="save">{{ editingId ? '保存修改' : '创建任务' }}</button>
+          <button class="btn secondary" @click="fillSamplePayload">填充示例 Payload</button>
         </div>
       </div>
     </div>
@@ -226,317 +193,207 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api } from '../services/api'
+import FormField from '../components/FormField.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const tasks = ref([])
 const runs = ref([])
 const agents = ref([])
 const profiles = ref([])
-const saving = ref(false)
+const accounts = ref([])
+const editorOpen = ref(false)
+const editingId = ref(null)
+const editorMode = ref('form')
 const message = ref('')
-let timer = null
-const advancedMode = ref(false)
-const editorExpanded = ref(false)
+const deleteOpen = ref(false)
+const deleteId = ref(null)
 
 const form = reactive({
   name: '',
   browserProfileId: null,
+  accountId: null,
   schedulingStrategy: 'least_loaded',
   preferredAgentId: null,
+  isEnabled: true,
+  scheduleType: 'manual',
+  scheduleConfigJson: '{}',
+  payloadJson: '{}',
   priority: 100,
-  payloadJson: '{}'
-})
-const selectedTemplate = ref('tiktok')
-const editorMode = ref('form')
-
-const tiktokPlan = reactive({
-  baseUrl: 'http://localhost:3001',
-  username: 'alice',
-  password: '123456',
-  minVideos: 3,
-  maxVideos: 8,
-  minWatchMs: 3000,
-  maxWatchMs: 9000,
-  minLikes: 1,
-  maxLikes: 4,
-  minComments: 1,
-  maxComments: 3,
-  behaviorProfile: 'balanced',
-  commentProvider: 'deepseek'
-})
-const baiduPlan = reactive({
-  url: 'https://www.baidu.com',
-  keyword: 'BrowserAgentPlatform 自动化测试'
-})
-const facebookPlan = reactive({
-  url: 'https://www.facebook.com',
-  keyword: 'automation testing'
+  timeoutSeconds: 300,
+  retryPolicyJson: '{"maxRetries":1}'
 })
 
-const agentOptions = computed(() => agents.value)
-const profileOptions = computed(() => profiles.value)
-const selectedProfile = computed(() => profiles.value.find(x => x.id === form.browserProfileId))
-const templateLabel = computed(() => selectedTemplate.value === 'tiktok'
-  ? 'TikTok'
-  : selectedTemplate.value === 'baidu'
-    ? 'Baidu'
-    : 'Facebook')
-const payloadSteps = computed(() => {
+const scheduleForm = reactive({
+  windowStart: '09:00',
+  windowEnd: '18:00',
+  maxRunsPerDay: 1,
+  randomMinuteStep: 5
+})
+
+function resetForm() {
+  editingId.value = null
+  Object.assign(form, {
+    name: '',
+    browserProfileId: null,
+    accountId: null,
+    schedulingStrategy: 'least_loaded',
+    preferredAgentId: null,
+    isEnabled: true,
+    scheduleType: 'manual',
+    scheduleConfigJson: '{}',
+    payloadJson: '{}',
+    priority: 100,
+    timeoutSeconds: 300,
+    retryPolicyJson: '{"maxRetries":1}'
+  })
+  Object.assign(scheduleForm, {
+    windowStart: '09:00',
+    windowEnd: '18:00',
+    maxRunsPerDay: 1,
+    randomMinuteStep: 5
+  })
+}
+
+function openCreate() {
+  resetForm()
+  editorOpen.value = true
+}
+
+function openEdit(item) {
+  editingId.value = item.id
+  form.name = item.name || ''
+  form.browserProfileId = item.browserProfileId
+  form.accountId = item.accountId
+  form.schedulingStrategy = item.schedulingStrategy || 'least_loaded'
+  form.preferredAgentId = item.preferredAgentId
+  form.isEnabled = item.isEnabled ?? true
+  form.scheduleType = item.scheduleType || 'manual'
+  form.scheduleConfigJson = item.scheduleConfigJson || '{}'
+  form.payloadJson = item.payloadJson || '{}'
+  form.priority = item.priority || 100
+  form.timeoutSeconds = item.timeoutSeconds || 300
+  form.retryPolicyJson = item.retryPolicyJson || '{"maxRetries":1}'
   try {
-    const parsed = JSON.parse(form.payloadJson || '{}')
-    return Array.isArray(parsed.steps) ? parsed.steps : []
-  } catch {
-    return []
-  }
-})
-const payloadPreviewError = computed(() => {
-  try {
-    JSON.parse(form.payloadJson || '{}')
-    return ''
-  } catch (err) {
-    return `PayloadJson 解析失败：${err?.message || 'unknown error'}`
-  }
-})
-
-function shortText(text, max = 120) {
-  if (!text) return '-'
-  const value = String(text).replace(/\s+/g, ' ').trim()
-  return value.length > max ? `${value.slice(0, max)}...` : value
+    const parsed = JSON.parse(form.scheduleConfigJson || '{}')
+    scheduleForm.windowStart = parsed.windowStart || '09:00'
+    scheduleForm.windowEnd = parsed.windowEnd || '18:00'
+    scheduleForm.maxRunsPerDay = parsed.maxRunsPerDay || 1
+    scheduleForm.randomMinuteStep = parsed.randomMinuteStep || 5
+  } catch {}
+  editorOpen.value = true
 }
 
-function buildBaiduPayload() {
-  return {
-    isolationGate: {
-      enforce: true,
-      requireRecentCheckMinutes: 120
-    },
-    steps: [
-      { id: 'step_open', type: 'open', data: { label: '打开百度首页', url: baiduPlan.url } },
-      { id: 'step_wait_input', type: 'wait_for_element', data: { label: '等待搜索输入框', selector: 'textarea[name=\"wd\"]', timeout: 15000 } },
-      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'textarea[name=\"wd\"]', value: baiduPlan.keyword } },
-      { id: 'step_click_search', type: 'click', data: { label: '点击搜索按钮', selector: '#su' } },
-      { id: 'step_wait_result', type: 'wait_for_element', data: { label: '等待结果区域', selector: '#content_left', timeout: 15000 } },
-      { id: 'step_extract_title', type: 'extract_text', data: { label: '提取首条结果标题', selector: '#content_left h3' } },
-      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
-    ],
-    edges: [
-      { source: 'step_open', target: 'step_wait_input' },
-      { source: 'step_wait_input', target: 'step_type_keyword' },
-      { source: 'step_type_keyword', target: 'step_click_search' },
-      { source: 'step_click_search', target: 'step_wait_result' },
-      { source: 'step_wait_result', target: 'step_extract_title' },
-      { source: 'step_extract_title', target: 'step_done' }
-    ],
-    assertions: [
-      { type: 'step_exists', label: '提取步骤必须存在', stepId: 'step_extract_title' },
-      { type: 'text_contains', label: '结果需包含关键词片段', sourceStepId: 'step_extract_title', expected: baiduPlan.keyword.split(' ')[0] || baiduPlan.keyword }
-    ]
+function syncProfileFromAccount() {
+  const account = accounts.value.find(x => x.id === Number(form.accountId))
+  if (account?.browserProfileId) {
+    form.browserProfileId = account.browserProfileId
   }
 }
 
-function buildFacebookPayload() {
-  return {
-    isolationGate: {
-      enforce: true,
-      requireRecentCheckMinutes: 120
-    },
-    steps: [
-      { id: 'step_open', type: 'open', data: { label: '打开 Facebook', url: facebookPlan.url } },
-      { id: 'step_wait_search', type: 'wait_for_element', data: { label: '等待搜索框', selector: 'input[placeholder*=\"Search\"], input[type=\"search\"]', timeout: 15000 } },
-      { id: 'step_type_keyword', type: 'type', data: { label: '输入关键词', selector: 'input[placeholder*=\"Search\"], input[type=\"search\"]', value: facebookPlan.keyword } },
-      { id: 'step_done', type: 'end_success', data: { label: '完成' } }
-    ],
-    edges: [
-      { source: 'step_open', target: 'step_wait_search' },
-      { source: 'step_wait_search', target: 'step_type_keyword' },
-      { source: 'step_type_keyword', target: 'step_done' }
-    ],
-    assertions: [
-      { type: 'step_exists', label: '搜索输入步骤必须存在', stepId: 'step_type_keyword' }
-    ]
-  }
+function buildScheduleJson() {
+  if (form.scheduleType !== 'daily_window_random') return '{}'
+  return JSON.stringify({
+    timezone: 'UTC',
+    windowStart: scheduleForm.windowStart,
+    windowEnd: scheduleForm.windowEnd,
+    maxRunsPerDay: scheduleForm.maxRunsPerDay,
+    randomMinuteStep: scheduleForm.randomMinuteStep
+  })
 }
 
-function fillExample() {
-  form.name = '百度搜索示例流程'
-  form.payloadJson = JSON.stringify(buildBaiduPayload(), null, 2)
-}
-
-function fillTikTokExample() {
-  form.name = 'TikTok Mock 随机浏览点赞评论'
+function fillSamplePayload() {
   form.payloadJson = JSON.stringify({
-    isolationGate: {
-      enforce: true,
-      requireRecentCheckMinutes: 120
-    },
     steps: [
-      {
-        id: 'tiktok_session',
-        type: 'tiktok_mock_session',
-        data: {
-          label: '执行 TikTok Mock 自动化会话',
-          baseUrl: tiktokPlan.baseUrl,
-          username: tiktokPlan.username,
-          password: tiktokPlan.password,
-          minVideos: tiktokPlan.minVideos,
-          maxVideos: tiktokPlan.maxVideos,
-          minWatchMs: tiktokPlan.minWatchMs,
-          maxWatchMs: tiktokPlan.maxWatchMs,
-          minLikes: tiktokPlan.minLikes,
-          maxLikes: tiktokPlan.maxLikes,
-          minComments: tiktokPlan.minComments,
-          maxComments: tiktokPlan.maxComments,
-          behaviorProfile: tiktokPlan.behaviorProfile,
-          commentProvider: tiktokPlan.commentProvider,
-          watchPattern: 'engaged',
-          commentStyle: 'friendly',
-          typingMinDelayMs: 35,
-          typingMaxDelayMs: 170,
-          typingTypoRate: 0.025,
-          typingBackspaceRate: 0.02,
-          commentCooldownMinMs: 2200,
-          commentCooldownMaxMs: 7200,
-          likeByKeywords: ['教程', '经验', '技巧'],
-          commentByKeywords: ['观点', '案例', '经验']
-        }
-      },
+      { id: 'step_open', type: 'open', data: { label: '打开页面', url: 'https://example.com' } },
+      { id: 'step_wait', type: 'wait_for_timeout', data: { label: '等待', timeout: 1000 } },
       { id: 'step_done', type: 'end_success', data: { label: '完成' } }
     ],
-    edges: [{ source: 'tiktok_session', target: 'step_done' }],
-    assertions: [
-      { type: 'number_range', label: '浏览视频数量符合范围', sourcePath: 'tiktok_session.watchedVideos', min: tiktokPlan.minVideos, max: tiktokPlan.maxVideos },
-      { type: 'number_range', label: '点赞数量符合范围', sourcePath: 'tiktok_session.likedVideos', min: tiktokPlan.minLikes, max: tiktokPlan.maxLikes },
-      { type: 'number_range', label: '评论数量符合范围', sourcePath: 'tiktok_session.commentedVideos', min: tiktokPlan.minComments, max: tiktokPlan.maxComments }
+    edges: [
+      { source: 'step_open', target: 'step_wait' },
+      { source: 'step_wait', target: 'step_done' }
     ]
   }, null, 2)
 }
 
-function fillFacebookExample() {
-  form.name = 'Facebook 搜索示例流程'
-  form.payloadJson = JSON.stringify(buildFacebookPayload(), null, 2)
+function formatTime(value) {
+  if (!value) return '-'
+  return new Date(value).toLocaleString()
 }
 
-function applyTemplate() {
-  if (selectedTemplate.value === 'tiktok') {
-    fillTikTokExample()
-    return
-  }
-  if (selectedTemplate.value === 'facebook') {
-    fillFacebookExample()
-    return
-  }
-  fillExample()
-}
-
-function syncPayloadFromForm() {
-  applyTemplate()
-  message.value = '已从配置表单更新 PayloadJson。'
+function askDelete(id) {
+  deleteId.value = id
+  deleteOpen.value = true
 }
 
 async function load() {
-  const [taskRes, runRes, agentRes, profileRes] = await Promise.allSettled([
-    api.tasks(),
-    api.runs(),
-    api.agents(),
-    api.profiles()
+  const [taskList, runList, agentList, profileList, accountList] = await Promise.all([
+    api.tasks(), api.runs(), api.agents(), api.profiles(), api.accounts()
   ])
-
-  tasks.value = taskRes.status === 'fulfilled' ? taskRes.value : []
-  runs.value = runRes.status === 'fulfilled' ? runRes.value : []
-  agents.value = agentRes.status === 'fulfilled' ? agentRes.value : []
-  profiles.value = profileRes.status === 'fulfilled' ? profileRes.value : []
-
-  const errors = [taskRes, runRes, agentRes, profileRes]
-    .filter(item => item.status === 'rejected')
-    .map(item => item.reason?.message || '请求失败')
-
-  if (errors.length) {
-    message.value = `部分数据加载失败：${errors.join('；')}`
-  } else if (!saving.value) {
-    message.value = ''
-  }
+  tasks.value = taskList
+  runs.value = runList
+  agents.value = agentList
+  profiles.value = profileList
+  accounts.value = accountList
 }
 
 async function save() {
-  saving.value = true
-  message.value = ''
   try {
-    if (!form.browserProfileId) {
-      message.value = '请先选择 BrowserProfile。'
-      return
+    const body = {
+      ...form,
+      scheduleConfigJson: buildScheduleJson()
     }
-
-    if (form.schedulingStrategy === 'preferred_agent' && !form.preferredAgentId) {
-      message.value = '当前策略为 preferred_agent，请选择 preferredAgent。'
-      return
+    if (editingId.value) {
+      await api.updateTask(editingId.value, body)
+      message.value = '任务已更新'
+    } else {
+      await api.createTask(body)
+      message.value = '任务已创建'
     }
-
-    if (form.schedulingStrategy === 'profile_owner' && !selectedProfile.value?.ownerAgentId) {
-      message.value = '当前 Profile 没有 ownerAgent，不能用 profile_owner。请改为 least_loaded 或先绑定 owner。'
-      return
-    }
-
-    await api.createTask({
-      name: form.name,
-      browserProfileId: form.browserProfileId,
-      schedulingStrategy: form.schedulingStrategy,
-      preferredAgentId: form.preferredAgentId,
-      priority: form.priority,
-      payloadJson: form.payloadJson,
-      timeoutSeconds: 300,
-      retryPolicyJson: '{"maxRetries":1}'
-    })
-    message.value = '任务已创建'
-    form.name = ''
-    form.browserProfileId = null
-    form.schedulingStrategy = 'least_loaded'
-    form.preferredAgentId = null
-    form.priority = 100
-    form.payloadJson = '{}'
+    editorOpen.value = false
     await load()
   } catch (err) {
-    message.value = err.message || '创建任务失败'
-  } finally {
-    saving.value = false
+    message.value = err.message || '保存失败'
   }
 }
 
-async function replay(runId) {
+async function runNow(id) {
   try {
-    const res = await api.replayRun(runId)
-    message.value = `已创建重跑任务，run #${res.replayRunId}`
+    await api.runNowTask(id)
+    message.value = `任务 #${id} 已立即入队`
     await load()
   } catch (err) {
-    message.value = err.message || '重跑失败'
+    message.value = err.message || '立即执行失败'
   }
 }
 
-onMounted(async () => {
-  applyTemplate()
-  await load()
-  timer = setInterval(load, 5000)
-})
+async function toggleEnabled(id) {
+  try {
+    await api.toggleTaskEnabled(id)
+    await load()
+  } catch (err) {
+    message.value = err.message || '启停失败'
+  }
+}
 
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer)
+async function removeTaskConfirmed() {
+  try {
+    if (deleteId.value) {
+      await api.deleteTask(deleteId.value)
+      message.value = `任务 #${deleteId.value} 已删除`
+      deleteOpen.value = false
+      deleteId.value = null
+      await load()
+    }
+  } catch (err) {
+    message.value = err.message || '删除失败'
+  }
+}
+
+onMounted(() => {
+  load()
+  fillSamplePayload()
 })
 </script>
-
-<style scoped>
-.modal-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.72);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 40;
-}
-.modal-panel {
-  width: min(980px, 96vw);
-  max-height: 88vh;
-  overflow: auto;
-}
-</style>
