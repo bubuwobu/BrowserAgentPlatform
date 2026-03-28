@@ -7,8 +7,24 @@
       "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\services\\agentworker.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\browseragentplatform\\browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\browseragentplatform\\browseragentplatform.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\browseragentplatform\\browseragentplatform.api\\controllers\\profilescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\controllers\\profilescontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\browseragentplatform\\browseragentplatform.api\\services\\observabilityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\services\\observabilityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\browseragentplatform\\browseragentplatform.api\\controllers\\agentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\controllers\\agentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,8 +34,57 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 4,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\appsettings.json",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\appsettings.json",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\appsettings.json",
+              "RelativeToolTip": "BrowserAgentPlatform.Agent\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-03-26T01:50:45.364Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ProfilesController.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\ProfilesController.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Controllers\\ProfilesController.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\ProfilesController.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Api\\Controllers\\ProfilesController.cs",
+              "ViewState": "AgIAAA4AAAAAAAAAAAAwwB0AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-25T04:37:19.135Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "ObservabilityService.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\ObservabilityService.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Services\\ObservabilityService.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\ObservabilityService.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Api\\Services\\ObservabilityService.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAqwBAAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-25T04:01:20.282Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "AgentsController.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\AgentsController.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Controllers\\AgentsController.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\AgentsController.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Api\\Controllers\\AgentsController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-25T03:55:07.28Z"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -28,14 +93,14 @@
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\AgentWorker.cs",
               "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\AgentWorker.cs",
               "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\AgentWorker.cs",
-              "ViewState": "AgIAACUAAAAAAAAAAAAswC4AAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAewCwAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-24T17:22:01.952Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "appsettings.json",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v7\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\appsettings.json",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\appsettings.json",
@@ -43,8 +108,7 @@
               "RelativeToolTip": "BrowserAgentPlatform.Api\\appsettings.json",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-03-24T16:55:24.462Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-03-24T16:55:24.462Z"
             }
           ]
         }
