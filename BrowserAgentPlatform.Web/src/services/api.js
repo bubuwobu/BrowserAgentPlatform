@@ -27,12 +27,14 @@ export const api = {
 
   proxies: () => request('/api/config/proxies'),
   createProxy: (body) => request('/api/config/proxies', { method: 'POST', body: JSON.stringify(body) }),
+  resetAndReseedDemoData: () => request('/api/config/demo/reset-reseed', { method: 'POST' }),
 
   fingerprints: () => request('/api/config/fingerprints'),
   createFingerprint: (body) => request('/api/config/fingerprints', { method: 'POST', body: JSON.stringify(body) }),
 
   profiles: () => request('/api/profiles'),
   createProfile: (body) => request('/api/profiles', { method: 'POST', body: JSON.stringify(body) }),
+  profileIsolationCheck: (id) => request(`/api/profiles/${id}/isolation-check`, { method: 'POST' }),
   testOpenProfile: (id) => request(`/api/profiles/${id}/test-open`, { method: 'POST' }),
   takeover: (id, headed) =>
     request(`/api/profiles/${id}/takeover`, {
@@ -47,5 +49,13 @@ export const api = {
   tasks: () => request('/api/tasks'),
   runs: () => request('/api/tasks/runs'),
   createTask: (body) => request('/api/tasks', { method: 'POST', body: JSON.stringify(body) }),
-  runDetail: (id) => request(`/api/tasks/runs/${id}`)
+  runDetail: (id) => request(`/api/tasks/runs/${id}`),
+  runIsolationReport: (runId) => request(`/api/tasks/runs/${runId}/isolation-report`),
+  replayRun: (runId) => request(`/api/tasks/runs/${runId}/replay`, { method: 'POST' }),
+
+  observabilityOverview: () => request('/api/observability/overview'),
+  auditEvents: (take = 200) => request(`/api/observability/audit-events?take=${take}`),
+
+  closedLoopStart: (body) => request('/api/validation/closed-loop/start', { method: 'POST', body: JSON.stringify(body) }),
+  closedLoopExecute: (body) => request('/api/validation/closed-loop/execute', { method: 'POST', body: JSON.stringify(body) })
 }
