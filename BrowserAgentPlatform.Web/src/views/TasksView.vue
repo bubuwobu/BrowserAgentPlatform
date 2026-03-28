@@ -6,18 +6,28 @@
     <div class="card" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <div>
-          <div style="font-weight:700;">任务编辑区（位于列表上方）</div>
-          <div class="muted">先在这里新增/编辑配置，再在下方重点查看任务和运行列表。</div>
+          <div style="font-weight:700;">任务操作区</div>
+          <div class="muted">默认只显示列表数据；新增/编辑任务通过弹窗完成。</div>
         </div>
         <div class="section-actions">
-          <button class="btn secondary" @click="editorExpanded = !editorExpanded">
-            {{ editorExpanded ? '收起编辑区' : '展开编辑区' }}
-          </button>
-          <button class="btn secondary" @click="advancedMode = !advancedMode">{{ advancedMode ? '隐藏高级项' : '显示高级项' }}</button>
+          <button class="btn" @click="editorExpanded = true">新增/编辑任务</button>
+          <button class="btn secondary" @click="load">刷新</button>
         </div>
       </div>
+      <div v-if="message" class="muted" style="margin-top:8px;">{{ message }}</div>
+    </div>
 
-      <div v-if="editorExpanded" class="grid" style="margin-top:12px;">
+    <div v-if="editorExpanded" class="modal-mask" @click.self="editorExpanded = false">
+      <div class="modal-panel card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="font-weight:700;">任务编辑弹窗</div>
+          <div class="section-actions">
+            <button class="btn secondary" @click="advancedMode = !advancedMode">{{ advancedMode ? '隐藏高级项' : '显示高级项' }}</button>
+            <button class="btn secondary" @click="editorExpanded = false">关闭</button>
+          </div>
+        </div>
+
+      <div class="grid" style="margin-top:12px;">
         <input class="input" v-model="form.name" placeholder="任务名称" />
 
         <div class="grid" style="grid-template-columns: 1fr 1fr; gap:8px;">
@@ -129,7 +139,6 @@
         <div class="section-actions">
           <button class="btn" @click="save" :disabled="saving">{{ saving ? '创建中...' : '创建任务' }}</button>
           <button class="btn secondary" @click="applyTemplate">填充当前模板</button>
-          <button class="btn secondary" @click="load">刷新</button>
         </div>
 
         <div class="muted">
@@ -139,8 +148,8 @@
           * `preferred_agent`：必须再选择 preferredAgent。
         </div>
 
-        <div v-if="message" class="muted">{{ message }}</div>
       </div>
+    </div>
     </div>
 
     <div class="grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
@@ -229,7 +238,7 @@ const saving = ref(false)
 const message = ref('')
 let timer = null
 const advancedMode = ref(false)
-const editorExpanded = ref(true)
+const editorExpanded = ref(false)
 
 const form = reactive({
   name: '',
@@ -514,3 +523,20 @@ onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
 })
 </script>
+
+<style scoped>
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 40;
+}
+.modal-panel {
+  width: min(980px, 96vw);
+  max-height: 88vh;
+  overflow: auto;
+}
+</style>
