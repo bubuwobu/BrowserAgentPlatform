@@ -1,0 +1,42 @@
+using System.Text.Json;
+
+namespace BrowserAgentPlatform.Agent.Services;
+
+public partial class AgentWorker
+{
+    private async Task HandleStartElementPickerAsync(string payloadJson, CancellationToken cancellationToken)
+    {
+        long profileId = 0;
+        string sessionId = string.Empty;
+        string? pageUrl = null;
+        bool headed = true;
+
+        if (!string.IsNullOrWhiteSpace(payloadJson))
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            var root = doc.RootElement;
+            profileId = root.TryGetProperty("profileId", out var pid) ? pid.GetInt64() : 0;
+            sessionId = root.TryGetProperty("sessionId", out var sid) ? (sid.GetString() ?? string.Empty) : string.Empty;
+            pageUrl = root.TryGetProperty("pageUrl", out var url) ? url.GetString() : null;
+            headed = root.TryGetProperty("headed", out var hd) ? hd.GetBoolean() : true;
+        }
+
+        var page = await _profiles.GetOrLaunchPageAsync(profileId, "[]", "{}", null, headed);
+        if (!string.IsNullOrWhiteSpace(pageUrl) && (string.IsNullOrWhiteSpace(page.Url) || page.Url == "about:blank"))
+        {
+            try { await page.GotoAsync(pageUrl); } catch { }
+        }
+
+        await _picker.StartPickerAsync(page, _options.ApiBaseUrl, sessionId, profileId, false, false, cancellationToken);
+        Console.WriteLine($"[Agent] element picker started. profileId={profileId}, sessionId={sessionId}");
+    }
+
+    private async Task HandleStopElementPickerAsync(long profileId, string sessionId, CancellationToken cancellationToken)
+    {
+        if (_profiles.TryGetPage(profileId, out var page) && page is not null)
+        {
+            await _picker.StopPickerAsync(page, sessionId, cancellationToken);
+            Console.WriteLine($"[Agent] element picker stopped. profileId={profileId}, sessionId={sessionId}");
+        }
+    }
+}

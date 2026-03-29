@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "BrowserAgentPlatform.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:12125;http://localhost:12126"
+    }
+  }
+}
