@@ -10,14 +10,21 @@ public class AgentWorker : BackgroundService
     private readonly PlatformApiClient _api;
     private readonly TaskExecutor _executor;
     private readonly ProfileRuntimeManager _profiles;
+    private readonly ElementPickerService _picker;
     private readonly AgentOptions _options;
     private int _currentRuns = 0;
 
-    public AgentWorker(PlatformApiClient api, TaskExecutor executor, ProfileRuntimeManager profiles, IOptions<AgentOptions> options)
+    public AgentWorker(
+        PlatformApiClient api,
+        TaskExecutor executor,
+        ProfileRuntimeManager profiles,
+        ElementPickerService picker,
+        IOptions<AgentOptions> options)
     {
         _api = api;
         _executor = executor;
         _profiles = profiles;
+        _picker = picker;
         _options = options.Value;
     }
 
@@ -32,7 +39,7 @@ public class AgentWorker : BackgroundService
                 var commands = await _api.HeartbeatAsync(_currentRuns);
                 foreach (var cmd in commands)
                 {
-                    await HandleCommandAsync(cmd.Clone());
+                    await HandleCommandAsync(cmd.Clone(), stoppingToken);
                 }
 
                 if (_currentRuns < _options.MaxParallelRuns)
@@ -73,51 +80,103 @@ public class AgentWorker : BackgroundService
             catch (Exception ex)
             {
                 Console.WriteLine("[Agent] main loop ERROR:");
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex);
             }
 
             await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
         }
     }
 
-    private async Task HandleCommandAsync(JsonElement cmd)
+    private async Task HandleCommandAsync(JsonElement cmd, CancellationToken cancellationToken)
     {
         try
         {
             if (!cmd.TryGetProperty("commandType", out var typeEl)) return;
 
-            var type = typeEl.GetString();
+            var type = typeEl.GetString() ?? string.Empty;
             var profileId = cmd.TryGetProperty("profileId", out var pid) && pid.ValueKind != JsonValueKind.Null
                 ? pid.GetInt64()
                 : 0L;
+
+            var payloadJson = cmd.TryGetProperty("payloadJson", out var payloadEl) && payloadEl.ValueKind == JsonValueKind.String
+                ? payloadEl.GetString()
+                : null;
 
             Console.WriteLine($"[Agent] Received command: {type}, profileId={profileId}");
 
             switch (type)
             {
                 case "test_open_profile":
-                    Console.WriteLine($"[Agent] test_open_profile -> launching profile {profileId}");
                     await _profiles.GetOrLaunchAsync(profileId, "[]", "{}", null, true);
-                    Console.WriteLine($"[Agent] profile {profileId} launched");
                     break;
 
                 case "takeover_start":
-                    Console.WriteLine($"[Agent] takeover_start -> launching profile {profileId}");
                     await _profiles.GetOrLaunchAsync(profileId, "[]", "{}", null, true);
-                    Console.WriteLine($"[Agent] profile {profileId} launched for takeover");
                     break;
 
                 case "takeover_stop":
-                    Console.WriteLine($"[Agent] takeover_stop -> closing profile {profileId}");
                     await _profiles.CloseAsync(profileId);
-                    Console.WriteLine($"[Agent] profile {profileId} closed");
                     break;
+
+                case "start_element_picker":
+                    await HandleStartElementPickerAsync(profileId, payloadJson, cancellationToken);
+                    break;
+
+                case "stop_element_picker":
+                    {
+                        string sessionId = string.Empty;
+                        if (!string.IsNullOrWhiteSpace(payloadJson))
+                        {
+                            using var doc = JsonDocument.Parse(payloadJson);
+                            var root = doc.RootElement;
+                            sessionId = root.TryGetProperty("sessionId", out var sid)
+                                ? (sid.GetString() ?? string.Empty)
+                                : string.Empty;
+                        }
+
+                        await HandleStopElementPickerAsync(profileId, sessionId, cancellationToken);
+                        break;
+                    }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine("[Agent] HandleCommandAsync ERROR:");
-            Console.WriteLine(ex.ToString());
+            Console.WriteLine(ex);
+        }
+    }
+
+    private async Task HandleStartElementPickerAsync(long profileId, string? payloadJson, CancellationToken cancellationToken)
+    {
+        string sessionId = string.Empty;
+        string? pageUrl = null;
+        bool headed = true;
+
+        if (!string.IsNullOrWhiteSpace(payloadJson))
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            var root = doc.RootElement;
+            sessionId = root.TryGetProperty("sessionId", out var sid) ? (sid.GetString() ?? string.Empty) : string.Empty;
+            pageUrl = root.TryGetProperty("pageUrl", out var url) ? url.GetString() : null;
+            headed = root.TryGetProperty("headed", out var hd) ? hd.GetBoolean() : true;
+        }
+
+        var page = await _profiles.GetOrLaunchPageAsync(profileId, "[]", "{}", null, headed);
+        if (!string.IsNullOrWhiteSpace(pageUrl) && (string.IsNullOrWhiteSpace(page.Url) || page.Url == "about:blank"))
+        {
+            try { await page.GotoAsync(pageUrl); } catch { }
+        }
+
+        await _picker.StartPickerAsync(page, _options.ApiBaseUrl, sessionId, profileId, false, false, cancellationToken);
+        Console.WriteLine($"[Agent] element picker started. profileId={profileId}, sessionId={sessionId}");
+    }
+
+    private async Task HandleStopElementPickerAsync(long profileId, string sessionId, CancellationToken cancellationToken)
+    {
+        if (_profiles.TryGetPage(profileId, out var page) && page is not null)
+        {
+            await _picker.StopPickerAsync(page, sessionId, cancellationToken);
+            Console.WriteLine($"[Agent] element picker stopped. profileId={profileId}, sessionId={sessionId}");
         }
     }
 }

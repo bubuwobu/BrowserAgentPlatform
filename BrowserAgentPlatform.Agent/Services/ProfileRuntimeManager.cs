@@ -86,6 +86,21 @@ public class ProfileRuntimeManager
         return context;
     }
 
+
+    public async Task<IPage> GetOrLaunchPageAsync(long profileId, string? startupArgsJson, string? fingerprintJson, string? proxyJson, bool headed = false)
+    {
+        var context = await GetOrLaunchAsync(profileId, startupArgsJson, fingerprintJson, proxyJson, headed);
+        return context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
+    }
+
+    public bool TryGetPage(long profileId, out IPage? page)
+    {
+        page = null;
+        if (!_contexts.TryGetValue(profileId, out var context)) return false;
+        page = context.Pages.FirstOrDefault();
+        return page is not null;
+    }
+
     public async Task CloseAsync(long profileId)
     {
         if (_contexts.TryGetValue(profileId, out var context))

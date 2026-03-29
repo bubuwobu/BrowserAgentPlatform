@@ -61,7 +61,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/live"))
+                if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/hubs/live") || path.StartsWithSegments("/hubs/picker")))
                 {
                     context.Token = accessToken;
                 }
@@ -81,6 +81,7 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ObservabilityService>();
 builder.Services.AddScoped<ClosedLoopValidationService>();
 builder.Services.AddSingleton<AgentRequestSecurityService>();
+builder.Services.AddSingleton<PickerSessionService>();
 builder.Services.AddHostedService<QueueScanBackgroundService>();
 builder.Services.AddHostedService<LeaseReaperBackgroundService>();
 builder.Services.AddHostedService<RunWatchdogBackgroundService>();
@@ -103,6 +104,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<LiveHub>("/hubs/live");
+app.MapHub<PickerHub>("/hubs/picker");
 app.MapGet("/", () => Results.Ok(new { ok = true, service = "BrowserAgentPlatform.Api" }));
 
 app.Run();

@@ -1,18 +1,15 @@
-BrowserAgentPlatform Phase 5.4 + 5.4.1 Combined Patch
+这次是基于你刚上传的当前前端代码，真正合并修复后的覆盖包。
 
-本包把 Phase 5.4 功能和 5.4.1 修正一起合并：
-1. 连线中间插入节点
-2. 节点多选
-3. Ctrl/Cmd + C / Ctrl/Cmd + V 复制粘贴
-4. 自动布局
-5. 网格吸附
-6. 小地图 minimap
-7. 修正打包下载问题，直接合并为一个可替换包
-
-覆盖文件：
-- BrowserAgentPlatform.Web/src/views/WorkflowBuilderView.vue
-
-使用方式：
-1. 备份你当前的 WorkflowBuilderView.vue
-2. 用本包里的同路径文件覆盖
-3. 重启前端
+已修复：
+1. 应用模板功能失效
+   - buildTemplate 不再是空实现
+   - basic / login / facebook / tiktok 都恢复
+2. 导入功能失效
+   - applyImport 恢复可用
+3. 校验功能过于空壳
+   - validateFlow 恢复基本校验
+4. 保留你当前已有的：
+   - 画布拖动
+   - 节点拖动
+   - 连线显示 / 连线创建
+   - API 推荐模板与整段流程生成

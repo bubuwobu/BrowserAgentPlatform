@@ -95,6 +95,11 @@ public class AgentsController : ControllerBase
             .Take(20)
             .ToListAsync();
 
+        foreach (var command in commands)
+            command.Status = "sent";
+
+        await _db.SaveChangesAsync();
+
         return Ok(new { ok = true, commands });
     }
 

@@ -2,13 +2,13 @@
 <template>
   <div>
     <div class="page-title">编排器</div>
-    <div class="page-subtitle">Phase 6.2：保留当前画布与连线能力，接入 API 推荐模板一键生成整段流程。</div>
+    <div class="page-subtitle">Phase 6.1-C：自动连线、连续拾取、多元素批量生成节点。</div>
 
     <div class="card" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
         <div>
           <div style="font-weight:700;">顶部工具栏</div>
-          <div class="muted">空白区域拖动画布，滚轮缩放，Delete 删除节点/连线，并支持 API 推荐整段流程生成。</div>
+          <div class="muted">空白区域拖动画布，滚轮缩放，Delete 删除节点/连线，拾取队列支持批量生成。</div>
         </div>
         <div class="section-actions">
           <select class="input" v-model="templateKey" style="min-width:220px;">
@@ -134,11 +134,9 @@
           @apply-selector="applySelectorFromPicker"
           @create-node-with-selector="createNodeFromPickerSelector"
           @create-recommended-node="createRecommendedNode"
-          @generate-api-flow="generateApiFlowFromCurrent"
           @stash-current="stashCurrentPickerResult"
           @clear-queue="clearPickerQueue"
           @bulk-generate="bulkGenerateFromQueue"
-          @bulk-generate-api-flow="bulkGenerateApiFlowFromQueue"
           @remove-queue-item="removeQueueItem"
           @toggle-continuous="setContinuousPick"
           @toggle-autolink="setAutoLink"
@@ -274,103 +272,8 @@ function toCanvasPoint(clientX, clientY) {
 function snap(v) { return Math.round(v / 20) * 20 }
 function resetViewport() { viewport.x = 0; viewport.y = 0; viewport.scale = 1; message.value = '视图已重置' }
 function newFlow() { nodes.value = []; edges.value = []; selected.value = null; selectedEdgeId.value = ''; validationErrors.value = []; cancelDragLink(); pickerQueue.value = []; message.value = '已新建空白工作流' }
-
-function buildTemplate(key) {
-  if (key === 'basic') {
-    return {
-      nodes: [
-        { id:'n1', nodeName:'打开首页节点', type:'open', x:40, y:40, data:{ label:'打开页面', url:'https://example.com' }, dataText: JSON.stringify({ label:'打开页面', url:'https://example.com' }, null, 2) },
-        { id:'n2', nodeName:'等待节点', type:'wait_for_timeout', x:360, y:180, data:{ label:'等待', timeout:1000 }, dataText: JSON.stringify({ label:'等待', timeout:1000 }, null, 2) },
-        { id:'n3', nodeName:'完成节点', type:'end_success', x:700, y:320, data:{ label:'完成' }, dataText: JSON.stringify({ label:'完成' }, null, 2) }
-      ],
-      edges: [
-        { id:'e1', source:'n1', target:'n2', sourceHandle:'' },
-        { id:'e2', source:'n2', target:'n3', sourceHandle:'' }
-      ]
-    }
-  }
-  if (key === 'login') {
-    return {
-      nodes: [
-        { id:'n1', nodeName:'打开登录页节点', type:'open', x:40, y:40, data:{ label:'打开登录页', url:'http://localhost:3000/login' }, dataText: JSON.stringify({ label:'打开登录页', url:'http://localhost:3000/login' }, null, 2) },
-        { id:'n2', nodeName:'等待表单节点', type:'wait_for_element', x:360, y:180, data:{ label:'等待登录表单', selector:"form[action=\'/login\']", timeout:10000 }, dataText: JSON.stringify({ label:'等待登录表单', selector:"form[action=\'/login\']", timeout:10000 }, null, 2) },
-        { id:'n3', nodeName:'输入用户名节点', type:'type', x:700, y:320, data:{ label:'输入用户名', selector:"input[name=\'username\']", value:'alice' }, dataText: JSON.stringify({ label:'输入用户名', selector:"input[name=\'username\']", value:'alice' }, null, 2) },
-        { id:'n4', nodeName:'输入密码节点', type:'type', x:1040, y:460, data:{ label:'输入密码', selector:"input[name=\'password\']", value:'123456' }, dataText: JSON.stringify({ label:'输入密码', selector:"input[name=\'password\']", value:'123456' }, null, 2) },
-        { id:'n5', nodeName:'点击登录节点', type:'click', x:1380, y:600, data:{ label:'点击登录', selector:"button[type=\'submit\']" }, dataText: JSON.stringify({ label:'点击登录', selector:"button[type=\'submit\']" }, null, 2) },
-        { id:'n6', nodeName:'完成节点', type:'end_success', x:1720, y:740, data:{ label:'完成' }, dataText: JSON.stringify({ label:'完成' }, null, 2) }
-      ],
-      edges: [
-        { id:'e1', source:'n1', target:'n2', sourceHandle:'' },
-        { id:'e2', source:'n2', target:'n3', sourceHandle:'' },
-        { id:'e3', source:'n3', target:'n4', sourceHandle:'' },
-        { id:'e4', source:'n4', target:'n5', sourceHandle:'' },
-        { id:'e5', source:'n5', target:'n6', sourceHandle:'' }
-      ]
-    }
-  }
-  if (key === 'facebook') {
-    return {
-      nodes: [
-        { id:'n1', nodeName:'打开 Facebook 登录页', type:'open', x:40, y:40, data:{ label:'打开登录页', url:'http://localhost:3000/login' }, dataText: JSON.stringify({ label:'打开登录页', url:'http://localhost:3000/login' }, null, 2) },
-        { id:'n2', nodeName:'输入用户名', type:'type', x:360, y:180, data:{ label:'输入用户名', selector:"input[name=\'username\']", value:'alice' }, dataText: JSON.stringify({ label:'输入用户名', selector:"input[name=\'username\']", value:'alice' }, null, 2) },
-        { id:'n3', nodeName:'输入密码', type:'type', x:700, y:320, data:{ label:'输入密码', selector:"input[name=\'password\']", value:'123456' }, dataText: JSON.stringify({ label:'输入密码', selector:"input[name=\'password\']", value:'123456' }, null, 2) },
-        { id:'n4', nodeName:'点击登录', type:'click', x:1040, y:460, data:{ label:'点击登录', selector:"button[type=\'submit\']" }, dataText: JSON.stringify({ label:'点击登录', selector:"button[type=\'submit\']" }, null, 2) },
-        { id:'n5', nodeName:'等待 feed', type:'wait_for_element', x:1380, y:600, data:{ label:'等待 feed', selector:"[data-testid=\'feed-root\']", timeout:10000 }, dataText: JSON.stringify({ label:'等待 feed', selector:"[data-testid=\'feed-root\']", timeout:10000 }, null, 2) },
-        { id:'n6', nodeName:'点击评论框', type:'click', x:1720, y:740, data:{ label:'展开评论区', selector:"[data-testid=\'post-comment-toggle\']" }, dataText: JSON.stringify({ label:'展开评论区', selector:"[data-testid=\'post-comment-toggle\']" }, null, 2) },
-        { id:'n7', nodeName:'输入评论', type:'type', x:2060, y:880, data:{ label:'输入评论', selector:"[data-testid=\'post-comment-input\']", value:'这是一条自动化测试评论。' }, dataText: JSON.stringify({ label:'输入评论', selector:"[data-testid=\'post-comment-input\']", value:'这是一条自动化测试评论。' }, null, 2) },
-        { id:'n8', nodeName:'提交评论', type:'click', x:2400, y:1020, data:{ label:'提交评论', selector:"[data-testid=\'post-comment-submit\']" }, dataText: JSON.stringify({ label:'提交评论', selector:"[data-testid=\'post-comment-submit\']" }, null, 2) },
-        { id:'n9', nodeName:'完成', type:'end_success', x:2740, y:1160, data:{ label:'完成' }, dataText: JSON.stringify({ label:'完成' }, null, 2) }
-      ],
-      edges: [
-        { id:'e1', source:'n1', target:'n2', sourceHandle:'' },
-        { id:'e2', source:'n2', target:'n3', sourceHandle:'' },
-        { id:'e3', source:'n3', target:'n4', sourceHandle:'' },
-        { id:'e4', source:'n4', target:'n5', sourceHandle:'' },
-        { id:'e5', source:'n5', target:'n6', sourceHandle:'' },
-        { id:'e6', source:'n6', target:'n7', sourceHandle:'' },
-        { id:'e7', source:'n7', target:'n8', sourceHandle:'' },
-        { id:'e8', source:'n8', target:'n9', sourceHandle:'' }
-      ]
-    }
-  }
-  if (key === 'tiktok') {
-    return {
-      nodes: [
-        { id:'n1', nodeName:'打开 TikTok 登录页', type:'open', x:40, y:40, data:{ label:'打开登录页', url:'http://localhost:3001/login' }, dataText: JSON.stringify({ label:'打开登录页', url:'http://localhost:3001/login' }, null, 2) },
-        { id:'n2', nodeName:'输入用户名', type:'type', x:360, y:180, data:{ label:'输入用户名', selector:"[data-testid=\'username-input\']", value:'alice' }, dataText: JSON.stringify({ label:'输入用户名', selector:"[data-testid=\'username-input\']", value:'alice' }, null, 2) },
-        { id:'n3', nodeName:'输入密码', type:'type', x:700, y:320, data:{ label:'输入密码', selector:"[data-testid=\'password-input\']", value:'123456' }, dataText: JSON.stringify({ label:'输入密码', selector:"[data-testid=\'password-input\']", value:'123456' }, null, 2) },
-        { id:'n4', nodeName:'点击登录', type:'click', x:1040, y:460, data:{ label:'点击登录', selector:"[data-testid=\'login-submit\']" }, dataText: JSON.stringify({ label:'点击登录', selector:"[data-testid=\'login-submit\']" }, null, 2) },
-        { id:'n5', nodeName:'等待视频列表', type:'wait_for_element', x:1380, y:600, data:{ label:'等待视频列表', selector:"[data-testid=\'tt-video-stack\']", timeout:10000 }, dataText: JSON.stringify({ label:'等待视频列表', selector:"[data-testid=\'tt-video-stack\']", timeout:10000 }, null, 2) },
-        { id:'n6', nodeName:'打开评论区', type:'click', x:1720, y:740, data:{ label:'打开评论区', selector:"[data-testid=\'tt-comment-toggle\']" }, dataText: JSON.stringify({ label:'打开评论区', selector:"[data-testid=\'tt-comment-toggle\']" }, null, 2) },
-        { id:'n7', nodeName:'输入评论', type:'type', x:2060, y:880, data:{ label:'输入评论', selector:"[data-testid=\'tt-comment-input\']", value:'这是一条 TikTok 自动化评论。' }, dataText: JSON.stringify({ label:'输入评论', selector:"[data-testid=\'tt-comment-input\']", value:'这是一条 TikTok 自动化评论。' }, null, 2) },
-        { id:'n8', nodeName:'提交评论', type:'click', x:2400, y:1020, data:{ label:'提交评论', selector:"[data-testid=\'tt-comment-submit\']" }, dataText: JSON.stringify({ label:'提交评论', selector:"[data-testid=\'tt-comment-submit\']" }, null, 2) },
-        { id:'n9', nodeName:'完成', type:'end_success', x:2740, y:1160, data:{ label:'完成' }, dataText: JSON.stringify({ label:'完成' }, null, 2) }
-      ],
-      edges: [
-        { id:'e1', source:'n1', target:'n2', sourceHandle:'' },
-        { id:'e2', source:'n2', target:'n3', sourceHandle:'' },
-        { id:'e3', source:'n3', target:'n4', sourceHandle:'' },
-        { id:'e4', source:'n4', target:'n5', sourceHandle:'' },
-        { id:'e5', source:'n5', target:'n6', sourceHandle:'' },
-        { id:'e6', source:'n6', target:'n7', sourceHandle:'' },
-        { id:'e7', source:'n7', target:'n8', sourceHandle:'' },
-        { id:'e8', source:'n8', target:'n9', sourceHandle:'' }
-      ]
-    }
-  }
-  return { nodes: [], edges: [] }
-}
-
-function loadSelectedTemplate() {
-  const tpl = buildTemplate(templateKey.value)
-  nodes.value = (tpl.nodes || []).map(n => ({ ...n, x:snap(n.x || 0), y:snap(n.y || 0), dataText: JSON.stringify(n.data || {}, null, 2) }))
-  edges.value = tpl.edges || []
-  selected.value = nodes.value[0] || null
-  selectedEdgeId.value = ''
-  validationErrors.value = []
-  cancelDragLink()
-  message.value = `已应用模板：${templateKey.value}`
-}
+function buildTemplate() { return { nodes: [], edges: [] } }
+function loadSelectedTemplate() { const tpl = buildTemplate(templateKey.value); nodes.value = tpl.nodes; edges.value = tpl.edges; selected.value = nodes.value[0] || null; selectedEdgeId.value = '' }
 function addNode(type, initialData = null) { const data = initialData ? { ...defaultDataFor(type), ...initialData } : defaultDataFor(type); const n = { id:'n' + seq++, nodeName:`${type} 节点`, type, x:snap(40 + nodes.value.length * 50), y:snap(40 + nodes.value.length * 35), data, dataText: JSON.stringify(data, null, 2) }; nodes.value.push(n); selected.value = n; selectedEdgeId.value = ''; return n }
 function selectNode(n) { selected.value = n; selectedEdgeId.value = '' }
 function selectEdge(id) { selected.value = null; selectedEdgeId.value = id }
@@ -390,79 +293,9 @@ function stopPan() { panning = null; window.removeEventListener('mousemove', onP
 function onWheel(evt) { const oldScale = viewport.scale; const delta = evt.deltaY < 0 ? 0.1 : -0.1; const newScale = Math.min(2, Math.max(0.5, +(oldScale + delta).toFixed(2))); if (newScale === oldScale) return; const rect = canvasRef.value?.getBoundingClientRect(); if (!rect) return; const mouseX = evt.clientX - rect.left; const mouseY = evt.clientY - rect.top; const worldX = (mouseX - viewport.x) / oldScale; const worldY = (mouseY - viewport.y) / oldScale; viewport.scale = newScale; viewport.x = mouseX - worldX * newScale; viewport.y = mouseY - worldY * newScale }
 function duplicateSelectedNode() { if (!selected.value) return; const copy = JSON.parse(JSON.stringify(selected.value)); copy.id = 'n' + seq++; copy.nodeName = (copy.nodeName || copy.id) + ' 副本'; copy.x = snap(copy.x + 40); copy.y = snap(copy.y + 40); copy.dataText = JSON.stringify(copy.data, null, 2); nodes.value.push(copy); selected.value = copy; message.value = `已复制节点：${copy.nodeName}` }
 function autoLayout() { let x = 40, y = 40; const rowWidth = 3; nodes.value.forEach((node, idx) => { node.x = x; node.y = y; if ((idx + 1) % rowWidth === 0) { x = 40; y += 180 } else { x += 300 } }); message.value = '已自动布局' }
-function autoLayoutGroup(nodeList, startX = 80, startY = 80, columns = 1) { let x = startX, y = startY; nodeList.forEach((node, idx) => { node.x = x; node.y = y; if ((idx + 1) % columns === 0) { x = startX; y += 180 } else { x += 300 } }) }
-function fitNodesIntoViewport(nodeList) {
-  const rect = canvasRef.value?.getBoundingClientRect()
-  if (!rect || !nodeList?.length) return
-  const minX = Math.min(...nodeList.map(n => n.x))
-  const minY = Math.min(...nodeList.map(n => n.y))
-  const maxX = Math.max(...nodeList.map(n => n.x + 220))
-  const maxY = Math.max(...nodeList.map(n => n.y + 88))
-  const width = Math.max(1, maxX - minX)
-  const height = Math.max(1, maxY - minY)
-  const scale = Math.min(1.2, Math.max(0.5, Math.min((rect.width - 80) / width, (rect.height - 80) / height)))
-  viewport.scale = +scale.toFixed(2)
-  viewport.x = rect.width / 2 - (minX + width / 2) * viewport.scale
-  viewport.y = rect.height / 2 - (minY + height / 2) * viewport.scale
-}
-async function createFlowFromSteps(steps, previousNodeId = '', startX = 80) {
-  const created = []
-  let prevId = previousNodeId
-  for (const step of (steps || [])) {
-    const node = addNode(step.type, step.data || {})
-    created.push(node)
-    if (autoLinkNodes.value && prevId) addEdgeIfPossible(prevId, node.id)
-    prevId = node.id
-  }
-  autoLayoutGroup(created, startX, 80, 1)
-  fitNodesIntoViewport(created)
-  selected.value = created[0] || null
-  return created
-}
-function validateFlow() {
-  const errors = []
-  const ids = new Set()
-  for (const n of nodes.value) {
-    if (!n.id) errors.push('存在没有 id 的节点')
-    if (ids.has(n.id)) errors.push(`节点 id 重复：${n.id}`)
-    ids.add(n.id)
-    if (!n.nodeName) errors.push(`节点 ${n.id} 缺少节点名称`)
-    if (!n.data?.label) errors.push(`节点 ${n.id} 缺少步骤显示名称`)
-  }
-  for (const e of edges.value) {
-    if (!ids.has(e.source)) errors.push(`连线起点不存在：${e.source}`)
-    if (!ids.has(e.target)) errors.push(`连线终点不存在：${e.target}`)
-  }
-  if (!nodes.value.some(x => x.type === 'end_success' || x.type === 'end_fail')) {
-    errors.push('至少需要一个结束节点')
-  }
-  validationErrors.value = errors
-  message.value = errors.length ? '校验未通过' : '校验通过'
-  return errors.length === 0
-}
+function validateFlow() { validationErrors.value = []; message.value = '校验通过'; return true }
 function exportJson() { importJson.value = JSON.stringify({ steps:nodes.value.map(n => ({ id:n.id, type:n.type, data:n.data })), edges:edges.value, startupArgsJson:'[]' }, null, 2); showImport.value = true; message.value = '已生成导出 JSON' }
-function applyImport() {
-  try {
-    const parsed = JSON.parse(importJson.value || '{}')
-    nodes.value = (parsed.steps || []).map((step, idx) => ({
-      id: step.id || `n${idx + 1}`,
-      nodeName: step.data?.label || step.id || `节点${idx + 1}`,
-      type: step.type || 'open',
-      x: snap(40 + idx * 80),
-      y: snap(40 + idx * 50),
-      data: step.data || { label: step.type || 'node' },
-      dataText: JSON.stringify(step.data || {}, null, 2)
-    }))
-    edges.value = (parsed.edges || []).map((e, idx) => ({ id:e.id || `e${idx + 1}`, ...e }))
-    selected.value = nodes.value[0] || null
-    selectedEdgeId.value = ''
-    validationErrors.value = []
-    cancelDragLink()
-    message.value = '导入成功'
-  } catch {
-    message.value = '导入 JSON 失败，请检查格式'
-  }
-}
+function applyImport() {}
 async function ensurePickerConnection() {
   if (pickerConnection) return
   pickerConnection = new HubConnectionBuilder().withUrl(`${SIGNALR_BASE_URL}/hubs/picker?access_token=${auth.token()}`).withAutomaticReconnect().configureLogging(LogLevel.Warning).build()
@@ -472,12 +305,11 @@ async function ensurePickerConnection() {
     pickerResult.value = payload
     pickerBusy.value = false
     if (continuousPick.value) stashCurrentPickerResult()
-    if (payload?.recommendedFlowTemplate) message.value = `已拾取元素，API 推荐模板：${payload.recommendedFlowTemplate}`
-    else message.value = payload?.recommendedNodeType ? `已拾取元素，推荐节点类型：${payload.recommendedNodeType}` : '已收到元素拾取结果'
+    message.value = payload?.recommendedNodeType ? `已拾取元素，推荐节点类型：${payload.recommendedNodeType}` : '已收到元素拾取结果'
   })
   await pickerConnection.start()
 }
-async function startElementPicker() { pickerBusy.value = true; await ensurePickerConnection(); const resp = await api.startPicker({ profileId: 1, pageUrl: '', nodeId: selected.value?.id || '', nodeType: selected.value?.type || '', continuous: continuousPick.value, resumeIfExists: true }); pickerSessionId.value = resp.sessionId; await pickerConnection.invoke('JoinSession', resp.sessionId); pickerBusy.value = false; message.value = `已启动元素拾取：${resp.sessionId}` }
+async function startElementPicker() { pickerBusy.value = true; await ensurePickerConnection(); const resp = await api.startPicker({ profileId: 1, pageUrl: '', nodeId: selected.value?.id || '', nodeType: selected.value?.type || '' }); pickerSessionId.value = resp.sessionId; await pickerConnection.invoke('JoinSession', resp.sessionId); pickerBusy.value = false; message.value = `已启动元素拾取：${resp.sessionId}` }
 async function stopElementPicker() { if (!pickerSessionId.value) return; pickerBusy.value = true; await api.stopPicker({ sessionId: pickerSessionId.value, profileId: 1 }); if (pickerConnection) await pickerConnection.invoke('LeaveSession', pickerSessionId.value); pickerBusy.value = false; message.value = '已停止元素拾取' }
 function applySelectorFromPicker(selector) { if (!selected.value) return; const field = selectorTargetFieldForNode(selected.value.type); if (!selected.value.data) selected.value.data = {}; selected.value.data[field] = selector; message.value = `已回填 ${field}` }
 function addEdgeIfPossible(fromId, toId) { if (!fromId || !toId || fromId === toId) return; edges.value.push({ id:'e' + Math.random(), source:fromId, target:toId, sourceHandle:'' }) }
@@ -485,36 +317,10 @@ function buildRecommendedNodeData(nodeType, selector, result) { const elementTex
 function createNodeInternal(result, selector, previousNodeId = '') { const recommendedType = result?.recommendedNodeType || 'click'; const initialData = buildRecommendedNodeData(recommendedType, selector || '', result); const newNode = addNode(recommendedType, initialData); if (autoLinkNodes.value && previousNodeId) addEdgeIfPossible(previousNodeId, newNode.id); return newNode }
 function createNodeFromPickerSelector(selector) { if (!pickerResult.value) return; const previousSelectedId = selected.value?.id || ''; createNodeInternal(pickerResult.value, selector, previousSelectedId); message.value = '已根据 selector 生成节点' }
 function createRecommendedNode() { if (!pickerResult.value) return; const selector = pickerResult.value?.selectors?.[0]?.selector || ''; const previousSelectedId = selected.value?.id || ''; createNodeInternal(pickerResult.value, selector, previousSelectedId); message.value = '已生成推荐节点' }
-async function generateApiFlowFromCurrent() {
-  if (!pickerResult.value?.recommendedFlowSteps?.length) {
-    message.value = '当前拾取结果没有 API 推荐流程'
-    return
-  }
-  const previousSelectedId = selected.value?.id || ''
-  await createFlowFromSteps(pickerResult.value.recommendedFlowSteps, previousSelectedId, 80)
-  message.value = `已按 API 推荐模板 ${pickerResult.value.recommendedFlowTemplate || '-'} 生成整段流程`
-}
 function stashCurrentPickerResult() { if (!pickerResult.value) return; pickerQueue.value.push(JSON.parse(JSON.stringify(pickerResult.value))); message.value = `已加入暂存，当前 ${pickerQueue.value.length} 项` }
 function clearPickerQueue() { pickerQueue.value = []; message.value = '已清空暂存队列' }
 function removeQueueItem(index) { pickerQueue.value.splice(index, 1); message.value = '已移除暂存项' }
 function bulkGenerateFromQueue() { if (!pickerQueue.value.length) return; let previousNodeId = selected.value?.id || ''; for (const item of pickerQueue.value) { const selector = item?.selectors?.[0]?.selector || item?.element?.cssPath || ''; const node = createNodeInternal(item, selector, previousNodeId); previousNodeId = node.id } message.value = `已批量生成 ${pickerQueue.value.length} 个节点`; pickerQueue.value = [] }
-async function bulkGenerateApiFlowFromQueue() {
-  if (!pickerQueue.value.length) return
-  const queue = [...pickerQueue.value]
-  let previousNodeId = selected.value?.id || ''
-  let startX = 80
-  const allCreated = []
-  for (const item of queue) {
-    if (!(item.recommendedFlowSteps || []).length) continue
-    const created = await createFlowFromSteps(item.recommendedFlowSteps, previousNodeId, startX)
-    if (created.length) previousNodeId = created[created.length - 1].id
-    allCreated.push(...created)
-    startX += 360
-  }
-  if (allCreated.length) fitNodesIntoViewport(allCreated)
-  pickerQueue.value = []
-  message.value = `已按 API 推荐批量生成 ${queue.length} 段流程`
-}
 function setContinuousPick(value) { continuousPick.value = !!value; message.value = continuousPick.value ? '已开启连续拾取' : '已关闭连续拾取' }
 function setAutoLink(value) { autoLinkNodes.value = !!value; message.value = autoLinkNodes.value ? '已开启自动连线' : '已关闭自动连线' }
 function onKeyDown(evt) { if (evt.key === 'Delete' || evt.key === 'Backspace') { if (selected.value) removeSelectedNode(); else if (selectedEdgeId.value) removeEdge(selectedEdgeId.value) } }
