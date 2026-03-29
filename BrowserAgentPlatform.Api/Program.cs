@@ -80,6 +80,7 @@ builder.Services.AddScoped<IsolationPolicyService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ObservabilityService>();
 builder.Services.AddScoped<ClosedLoopValidationService>();
+builder.Services.AddScoped<ProfileLifecycleService>();
 builder.Services.AddSingleton<AgentRequestSecurityService>();
 builder.Services.AddSingleton<PickerSessionService>();
 builder.Services.AddHostedService<QueueScanBackgroundService>();

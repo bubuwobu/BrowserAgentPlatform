@@ -32,7 +32,7 @@ public class LiveController : ControllerBase
             .ToListAsync();
 
         var profiles = await _db.BrowserProfiles
-            .OrderByDescending(x => x.Id)
+            .OrderByDescending(x => x.LastUsedAt ?? x.LastStartedAt ?? x.CreatedAt)
             .Take(10)
             .Select(x => new
             {
@@ -42,8 +42,22 @@ public class LiveController : ControllerBase
                 x.OwnerAgentId,
                 x.ProxyId,
                 x.FingerprintTemplateId,
-                x.LastUsedAt
+                x.LastUsedAt,
+                x.WorkspaceKey,
+                x.ProfileRootPath,
+                x.ArtifactRootPath,
+                x.TempRootPath,
+                x.LifecycleState,
+                x.RuntimeMetaJson,
+                x.LastStartedAt,
+                x.LastStoppedAt,
+                x.LastIsolationCheckAt
             })
+            .ToListAsync();
+
+        var lifecycleCounts = await _db.BrowserProfiles
+            .GroupBy(x => x.LifecycleState ?? "created")
+            .Select(g => new { lifecycle = g.Key, count = g.Count() })
             .ToListAsync();
 
         var recentRuns = await _db.TaskRuns
@@ -53,6 +67,7 @@ public class LiveController : ControllerBase
             {
                 x.Id,
                 x.TaskId,
+                x.BrowserProfileId,
                 Status = x.Status ?? "queued",
                 CurrentStepLabel = x.CurrentStepLabel ?? "",
                 CurrentUrl = x.CurrentUrl ?? "",
@@ -73,6 +88,7 @@ public class LiveController : ControllerBase
             running = await _db.TaskRuns.CountAsync(x => x.Status == "running" || x.Status == "leased"),
             completed = await _db.TaskRuns.CountAsync(x => x.Status == "completed"),
             failed = await _db.TaskRuns.CountAsync(x => x.Status == "failed"),
+            lifecycleCounts,
             recentRuns,
             recentAgents = agents,
             recentProfiles = profiles

@@ -11,7 +11,33 @@ public record AgentCompleteRequest(long TaskRunId, string Status, string ResultJ
 
 public record ProxyUpsertRequest(string Name, string Protocol, string Host, int Port, string Username, string Password, string Notes);
 public record FingerprintTemplateRequest(string Name, string ConfigJson);
-public record BrowserProfileRequest(string Name, long? OwnerAgentId, long? ProxyId, long? FingerprintTemplateId, string LocalProfilePath, string StorageRootPath, string DownloadRootPath, string StartupArgsJson, string IsolationPolicyJson, string IsolationLevel);
+public record BrowserProfileRequest(string Name, long? OwnerAgentId, long? ProxyId, long? FingerprintTemplateId, string LocalProfilePath, string StorageRootPath, string DownloadRootPath, string StartupArgsJson, string IsolationPolicyJson, string IsolationLevel, string? WorkspaceKey, string? ProfileRootPath, string? ArtifactRootPath, string? TempRootPath, string? LifecycleState);
+public record BrowserProfileListItem(
+    long Id,
+    string Name,
+    long? OwnerAgentId,
+    long? ProxyId,
+    long? FingerprintTemplateId,
+    string Status,
+    string IsolationLevel,
+    string LocalProfilePath,
+    string StorageRootPath,
+    string DownloadRootPath,
+    string StartupArgsJson,
+    string IsolationPolicyJson,
+    string RuntimeMetaJson,
+    string WorkspaceKey,
+    string ProfileRootPath,
+    string ArtifactRootPath,
+    string TempRootPath,
+    string LifecycleState,
+    DateTime? LastUsedAt,
+    DateTime? LastIsolationCheckAt,
+    DateTime? LastStartedAt,
+    DateTime? LastStoppedAt,
+    DateTime? LastRebuildAt,
+    DateTime CreatedAt);
+
 public record TaskTemplateRequest(string Name, string DefinitionJson);
 
 public record WorkflowTaskRequest(

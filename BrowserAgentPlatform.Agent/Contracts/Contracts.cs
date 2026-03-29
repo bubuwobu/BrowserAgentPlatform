@@ -1,3 +1,5 @@
+using BrowserAgentPlatform.Agent.Models;
+
 namespace BrowserAgentPlatform.Agent.Contracts;
 
 public class AgentRegisterRequest
@@ -23,6 +25,31 @@ public class AgentPullResponse
     public int? TimeoutSeconds { get; set; }
     public string? RetryPolicyJson { get; set; }
     public string? IsolationPolicyJson { get; set; }
+    public RuntimeIdentityDescriptor? RuntimeIdentity { get; set; }
+
+    public AgentPullResponse() { }
+
+    public AgentPullResponse(
+        long? taskRunId,
+        long? taskId,
+        long? profileId,
+        string? leaseToken,
+        string? payloadJson,
+        int? timeoutSeconds,
+        string? retryPolicyJson,
+        string? isolationPolicyJson,
+        RuntimeIdentityDescriptor? runtimeIdentity)
+    {
+        TaskRunId = taskRunId;
+        TaskId = taskId;
+        ProfileId = profileId;
+        LeaseToken = leaseToken;
+        PayloadJson = payloadJson;
+        TimeoutSeconds = timeoutSeconds;
+        RetryPolicyJson = retryPolicyJson;
+        IsolationPolicyJson = isolationPolicyJson;
+        RuntimeIdentity = runtimeIdentity;
+    }
 }
 public class AgentProgressRequest
 {

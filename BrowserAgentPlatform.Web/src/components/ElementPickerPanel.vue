@@ -4,7 +4,7 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
       <div>
         <div style="font-weight:700;">元素拾取器</div>
-        <div class="muted">Phase 6.2：保留现有节点/连线能力，同时支持 API 推荐模板一键生成整段流程。</div>
+        <div class="muted">Phase 6.2：批量生成后自动布局，并可从拾取结果直接生成完整小流程模板。</div>
       </div>
       <div class="section-actions">
         <button class="btn" @click="$emit('start')" :disabled="busy">开始拾取</button>
@@ -41,23 +41,12 @@
         <div class="muted">name: {{ result.element?.name || '-' }}</div>
         <div class="muted">推荐节点: {{ result.recommendedNodeType || '-' }}</div>
         <div class="muted">推荐字段: {{ result.recommendedTargetField || '-' }}</div>
-        <div class="muted">推荐模板: {{ result.recommendedFlowTemplate || '-' }}</div>
-        <div class="muted">推荐动作数: {{ (result.recommendedFlowSteps || []).length }}</div>
       </div>
 
       <div class="section-actions" style="margin-top:10px; flex-wrap:wrap;">
         <button class="btn" @click="$emit('stash-current')">加入暂存</button>
         <button class="btn" @click="$emit('create-recommended-node')" :disabled="!result.recommendedNodeType">按推荐生成节点</button>
         <button class="btn success" @click="$emit('create-mini-flow')">生成小流程模板</button>
-        <button class="btn success" @click="$emit('generate-api-flow')" :disabled="!(result.recommendedFlowSteps || []).length">按 API 推荐生成整段流程</button>
-      </div>
-
-      <div v-if="(result.recommendedFlowSteps || []).length" style="margin-top:12px;">
-        <div style="font-weight:700;">API 推荐动作链</div>
-        <div v-for="(step, idx) in result.recommendedFlowSteps" :key="'flow-' + idx" class="card" style="margin-top:8px;">
-          <div style="font-weight:700;">{{ idx + 1 }}. {{ step.type }}</div>
-          <div class="muted">{{ step.data?.label || '-' }}</div>
-        </div>
       </div>
 
       <div style="font-weight:700;margin-top:12px;">Selector 候选</div>
@@ -83,7 +72,6 @@
           <button class="btn secondary" @click="$emit('clear-queue')" :disabled="!queue.length">清空</button>
           <button class="btn" @click="$emit('bulk-generate')" :disabled="!queue.length">批量生成节点</button>
           <button class="btn success" @click="$emit('bulk-generate-flow')" :disabled="!queue.length">批量生成小流程</button>
-          <button class="btn success" @click="$emit('bulk-generate-api-flow')" :disabled="!queue.length">批量按 API 流程生成</button>
         </div>
       </div>
 
@@ -122,12 +110,10 @@ defineEmits([
   'create-node-with-selector',
   'create-recommended-node',
   'create-mini-flow',
-  'generate-api-flow',
   'stash-current',
   'clear-queue',
   'bulk-generate',
   'bulk-generate-flow',
-  'bulk-generate-api-flow',
   'remove-queue-item',
   'toggle-continuous',
   'toggle-autolink'

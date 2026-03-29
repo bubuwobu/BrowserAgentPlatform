@@ -20,6 +20,7 @@ public class AgentsController : ControllerBase
     private readonly IsolationPolicyService _isolationPolicyService;
     private readonly AgentRequestSecurityService _agentRequestSecurityService;
     private readonly AuditService _auditService;
+    private readonly ProfileLifecycleService _profileLifecycleService;
 
     public AgentsController(
         AppDbContext db,
@@ -28,7 +29,8 @@ public class AgentsController : ControllerBase
         LiveHubNotifier notifier,
         IsolationPolicyService isolationPolicyService,
         AgentRequestSecurityService agentRequestSecurityService,
-        AuditService auditService)
+        AuditService auditService,
+        ProfileLifecycleService profileLifecycleService)
     {
         _db = db;
         _scheduler = scheduler;
@@ -37,6 +39,7 @@ public class AgentsController : ControllerBase
         _isolationPolicyService = isolationPolicyService;
         _agentRequestSecurityService = agentRequestSecurityService;
         _auditService = auditService;
+        _profileLifecycleService = profileLifecycleService;
     }
 
     [AllowAnonymous]
@@ -171,6 +174,7 @@ public class AgentsController : ControllerBase
         profile.LastIsolationCheckAt = DateTime.UtcNow;
         profile.RuntimeMetaJson = check.EffectivePolicyJson;
         await _db.SaveChangesAsync();
+        await _profileLifecycleService.MarkLeasedAsync(result.Value.run.BrowserProfileId, result.Value.run.Id, result.Value.run.TaskId, result.Value.profileLock.LeaseToken);
         await _auditService.WriteAsync("run_pulled", "agent", agentKey, "task_run", result.Value.run.Id.ToString());
 
         return Ok(new AgentPullResponse(
@@ -219,6 +223,7 @@ public class AgentsController : ControllerBase
             Message = request.Message
         });
         await _db.SaveChangesAsync();
+        await _profileLifecycleService.MarkRunningAsync(run.BrowserProfileId, run.Id, run.CurrentStepId, run.CurrentStepLabel, run.CurrentUrl);
 
         await _notifier.PublishRunUpdateAsync(run.Id, new
         {
@@ -303,6 +308,7 @@ public class AgentsController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+        await _profileLifecycleService.MarkCompletedAsync(run.BrowserProfileId, request.Status);
         await _scheduler.ReleaseRunAsync(run.Id);
         await _notifier.PublishRunUpdateAsync(run.Id, new { run.Id, run.Status, run.LastPreviewPath, completed = true });
         await _auditService.WriteAsync("run_complete", "agent", requestAgentKey, "task_run", run.Id.ToString(), $"{{\"status\":\"{run.Status}\"}}");

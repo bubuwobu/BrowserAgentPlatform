@@ -13,6 +13,19 @@ public class ElementPickerService
         _httpClient = httpClient;
     }
 
+    // 兼容旧调用：第五个参数直接传 CancellationToken
+    public Task StartPickerAsync(
+        IPage page,
+        string apiBaseUrl,
+        string sessionId,
+        long profileId,
+        CancellationToken cancellationToken)
+        => StartPickerAsync(page, apiBaseUrl, sessionId, profileId, false, false, cancellationToken);
+
+    // 兼容旧调用：省略 sessionId
+    public Task StopPickerAsync(IPage page, CancellationToken cancellationToken = default)
+        => StopPickerAsync(page, string.Empty, cancellationToken);
+
     public async Task StartPickerAsync(
         IPage page,
         string apiBaseUrl,
@@ -81,7 +94,6 @@ public class ElementPickerService
         }
         catch
         {
-            // Bridge may already exist on current page runtime.
         }
 
         await page.EvaluateAsync($"window.__BAP_PICKER_SESSION_ID__ = '{sessionId}';");

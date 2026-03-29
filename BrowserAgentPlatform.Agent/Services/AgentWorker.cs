@@ -123,20 +123,8 @@ public class AgentWorker : BackgroundService
                     break;
 
                 case "stop_element_picker":
-                    {
-                        string sessionId = string.Empty;
-                        if (!string.IsNullOrWhiteSpace(payloadJson))
-                        {
-                            using var doc = JsonDocument.Parse(payloadJson);
-                            var root = doc.RootElement;
-                            sessionId = root.TryGetProperty("sessionId", out var sid)
-                                ? (sid.GetString() ?? string.Empty)
-                                : string.Empty;
-                        }
-
-                        await HandleStopElementPickerAsync(profileId, sessionId, cancellationToken);
-                        break;
-                    }
+                    await HandleStopElementPickerAsync(profileId, cancellationToken);
+                    break;
             }
         }
         catch (Exception ex)
@@ -167,16 +155,16 @@ public class AgentWorker : BackgroundService
             try { await page.GotoAsync(pageUrl); } catch { }
         }
 
-        await _picker.StartPickerAsync(page, _options.ApiBaseUrl, sessionId, profileId, false, false, cancellationToken);
+        await _picker.StartPickerAsync(page, _options.ApiBaseUrl, sessionId, profileId, cancellationToken);
         Console.WriteLine($"[Agent] element picker started. profileId={profileId}, sessionId={sessionId}");
     }
 
-    private async Task HandleStopElementPickerAsync(long profileId, string sessionId, CancellationToken cancellationToken)
+    private async Task HandleStopElementPickerAsync(long profileId, CancellationToken cancellationToken)
     {
         if (_profiles.TryGetPage(profileId, out var page) && page is not null)
         {
-            await _picker.StopPickerAsync(page, sessionId, cancellationToken);
-            Console.WriteLine($"[Agent] element picker stopped. profileId={profileId}, sessionId={sessionId}");
+            await _picker.StopPickerAsync(page);
+            Console.WriteLine($"[Agent] element picker stopped. profileId={profileId}");
         }
     }
 }

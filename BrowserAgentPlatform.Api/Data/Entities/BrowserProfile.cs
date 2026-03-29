@@ -14,7 +14,15 @@ public class BrowserProfile
     public string StartupArgsJson { get; set; } = "[]";
     public string IsolationPolicyJson { get; set; } = "{}";
     public string RuntimeMetaJson { get; set; } = "{}";
+    public string WorkspaceKey { get; set; } = "";
+    public string ProfileRootPath { get; set; } = "";
+    public string ArtifactRootPath { get; set; } = "";
+    public string TempRootPath { get; set; } = "";
+    public string LifecycleState { get; set; } = "created";
     public DateTime? LastUsedAt { get; set; }
     public DateTime? LastIsolationCheckAt { get; set; }
+    public DateTime? LastStartedAt { get; set; }
+    public DateTime? LastStoppedAt { get; set; }
+    public DateTime? LastRebuildAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

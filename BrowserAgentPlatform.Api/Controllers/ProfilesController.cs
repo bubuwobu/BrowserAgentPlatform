@@ -17,19 +17,55 @@ public class ProfilesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IsolationPolicyService _isolationPolicyService;
     private readonly AuditService _auditService;
+    private readonly ProfileLifecycleService _profileLifecycleService;
 
-    public ProfilesController(AppDbContext db, IsolationPolicyService isolationPolicyService, AuditService auditService)
+    public ProfilesController(AppDbContext db, IsolationPolicyService isolationPolicyService, AuditService auditService, ProfileLifecycleService profileLifecycleService)
     {
         _db = db;
         _isolationPolicyService = isolationPolicyService;
         _auditService = auditService;
+        _profileLifecycleService = profileLifecycleService;
     }
 
     [HttpGet]
     public async Task<IActionResult> List()
     {
         var profiles = await _db.BrowserProfiles.OrderByDescending(x => x.Id).ToListAsync();
-        return Ok(profiles);
+        return Ok(profiles.Select(MapListItem));
+    }
+
+    [HttpGet("state-board")]
+    public async Task<IActionResult> StateBoard([FromQuery] int take = 12)
+    {
+        take = Math.Clamp(take, 1, 50);
+        var profiles = await _db.BrowserProfiles
+            .OrderByDescending(x => x.LastUsedAt ?? x.LastStartedAt ?? x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .Take(take)
+            .ToListAsync();
+
+        var byLifecycle = await _db.BrowserProfiles
+            .GroupBy(x => x.LifecycleState ?? "created")
+            .Select(g => new { lifecycle = g.Key, count = g.Count() })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            total = await _db.BrowserProfiles.CountAsync(),
+            active = await _db.BrowserProfiles.CountAsync(x => x.LifecycleState == "running" || x.LifecycleState == "leased"),
+            broken = await _db.BrowserProfiles.CountAsync(x => x.LifecycleState == "broken"),
+            ready = await _db.BrowserProfiles.CountAsync(x => x.LifecycleState == "ready" || x.Status == "idle"),
+            byLifecycle,
+            items = profiles.Select(MapListItem)
+        });
+    }
+
+    [HttpGet("{id:long}/state-panel")]
+    public async Task<IActionResult> StatePanel(long id)
+    {
+        var profile = await _db.BrowserProfiles.FindAsync(id);
+        if (profile is null) return NotFound();
+        return Ok(MapListItem(profile));
     }
 
     [HttpPost]
@@ -46,7 +82,12 @@ public class ProfilesController : ControllerBase
             DownloadRootPath = request.DownloadRootPath ?? "",
             StartupArgsJson = request.StartupArgsJson ?? "[]",
             IsolationPolicyJson = request.IsolationPolicyJson ?? "{}",
-            IsolationLevel = request.IsolationLevel ?? "standard"
+            IsolationLevel = request.IsolationLevel ?? "standard",
+            WorkspaceKey = request.WorkspaceKey ?? $"profile_{Guid.NewGuid():N}"[..16],
+            ProfileRootPath = request.ProfileRootPath ?? request.LocalProfilePath ?? "",
+            ArtifactRootPath = request.ArtifactRootPath ?? "",
+            TempRootPath = request.TempRootPath ?? "",
+            LifecycleState = string.IsNullOrWhiteSpace(request.LifecycleState) ? "created" : request.LifecycleState!
         };
 
         _db.BrowserProfiles.Add(profile);
@@ -70,6 +111,11 @@ public class ProfilesController : ControllerBase
         profile.StartupArgsJson = request.StartupArgsJson ?? "[]";
         profile.IsolationPolicyJson = request.IsolationPolicyJson ?? "{}";
         profile.IsolationLevel = request.IsolationLevel ?? "standard";
+        profile.WorkspaceKey = request.WorkspaceKey ?? profile.WorkspaceKey;
+        profile.ProfileRootPath = request.ProfileRootPath ?? request.LocalProfilePath ?? profile.ProfileRootPath;
+        profile.ArtifactRootPath = request.ArtifactRootPath ?? profile.ArtifactRootPath;
+        profile.TempRootPath = request.TempRootPath ?? profile.TempRootPath;
+        if (!string.IsNullOrWhiteSpace(request.LifecycleState)) profile.LifecycleState = request.LifecycleState!;
 
         await _db.SaveChangesAsync();
         return Ok(profile);
@@ -98,7 +144,7 @@ public class ProfilesController : ControllerBase
             AgentId = profile.OwnerAgentId.Value,
             ProfileId = profile.Id,
             CommandType = "test_open_profile",
-            PayloadJson = $"{{\"profileId\":{profile.Id}}}"
+            PayloadJson = JsonSerializer.Serialize(new { profileId = profile.Id })
         });
 
         await _db.SaveChangesAsync();
@@ -118,7 +164,7 @@ public class ProfilesController : ControllerBase
             AgentId = profile.OwnerAgentId.Value,
             ProfileId = profile.Id,
             CommandType = request.Headed ? "takeover_start" : "takeover_stop",
-            PayloadJson = $"{{\"profileId\":{profile.Id},\"headed\":{request.Headed.ToString().ToLowerInvariant()}}}"
+            PayloadJson = JsonSerializer.Serialize(new { profileId = profile.Id, headed = request.Headed })
         });
 
         await _db.SaveChangesAsync();
@@ -137,9 +183,9 @@ public class ProfilesController : ControllerBase
 
         var profile = await _db.BrowserProfiles.FindAsync(id);
         if (profile is not null)
-            profile.Status = "idle";
-
-        await _db.SaveChangesAsync();
+            await _profileLifecycleService.MarkUnlockedAsync(profile.Id);
+        else
+            await _db.SaveChangesAsync();
         return Ok(new { ok = true, released = locks.Count });
     }
 
@@ -172,4 +218,11 @@ public class ProfilesController : ControllerBase
             effectivePolicyJson = result.EffectivePolicyJson
         });
     }
+
+    private static BrowserProfileListItem MapListItem(BrowserProfile x) => new(
+        x.Id, x.Name, x.OwnerAgentId, x.ProxyId, x.FingerprintTemplateId, x.Status, x.IsolationLevel,
+        x.LocalProfilePath, x.StorageRootPath, x.DownloadRootPath, x.StartupArgsJson, x.IsolationPolicyJson, x.RuntimeMetaJson,
+        x.WorkspaceKey, x.ProfileRootPath, x.ArtifactRootPath, x.TempRootPath, x.LifecycleState,
+        x.LastUsedAt, x.LastIsolationCheckAt, x.LastStartedAt, x.LastStoppedAt, x.LastRebuildAt, x.CreatedAt
+    );
 }

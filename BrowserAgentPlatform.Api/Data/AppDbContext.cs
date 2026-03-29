@@ -99,8 +99,16 @@ public class AppDbContext : DbContext
             entity.Property(x => x.StartupArgsJson).HasColumnName("startup_args_json").HasColumnType("longtext");
             entity.Property(x => x.IsolationPolicyJson).HasColumnName("isolation_policy_json").HasColumnType("longtext");
             entity.Property(x => x.RuntimeMetaJson).HasColumnName("runtime_meta_json").HasColumnType("longtext");
+            entity.Property(x => x.WorkspaceKey).HasColumnName("workspace_key");
+            entity.Property(x => x.ProfileRootPath).HasColumnName("profile_root_path");
+            entity.Property(x => x.ArtifactRootPath).HasColumnName("artifact_root_path");
+            entity.Property(x => x.TempRootPath).HasColumnName("temp_root_path");
+            entity.Property(x => x.LifecycleState).HasColumnName("lifecycle_state");
             entity.Property(x => x.LastUsedAt).HasColumnName("last_used_at");
             entity.Property(x => x.LastIsolationCheckAt).HasColumnName("last_isolation_check_at");
+            entity.Property(x => x.LastStartedAt).HasColumnName("last_started_at");
+            entity.Property(x => x.LastStoppedAt).HasColumnName("last_stopped_at");
+            entity.Property(x => x.LastRebuildAt).HasColumnName("last_rebuild_at");
             entity.Property(x => x.CreatedAt).HasColumnName("created_at");
         });
 
