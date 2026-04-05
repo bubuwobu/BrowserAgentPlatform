@@ -28,7 +28,7 @@
       </div>
     </div>
 
-    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+    <div v-if="editorOpen" class="modal-mask">
       <div class="modal-panel card">
         <div class="toolbar">
           <div style="font-weight:700;">{{ editingId ? '编辑 Profile' : '新增 Profile' }}</div>
