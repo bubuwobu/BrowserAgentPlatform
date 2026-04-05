@@ -74,15 +74,17 @@
       @confirm="removeTaskConfirmed"
     />
 
-    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+    <div v-if="editorOpen" class="modal-mask">
       <div class="modal-panel card">
         <div class="toolbar">
           <div style="font-weight:700;">{{ editingId ? '编辑任务' : '新增任务' }}</div>
           <div class="section-actions">
+            <button class="btn secondary" @click="refreshEditorResources">刷新选项</button>
             <button class="btn secondary" @click="editorMode = editorMode === 'form' ? 'json' : 'form'">{{ editorMode === 'form' ? '切到 JSON' : '切到表单' }}</button>
             <button class="btn secondary" @click="editorOpen = false">关闭</button>
           </div>
         </div>
+        <div v-if="resourceLoading" class="muted" style="margin-top:8px;">选项数据加载中...</div>
 
         <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
           <FormField label="任务名称" :required="true" help="用于任务中心识别和筛选。">
@@ -92,6 +94,7 @@
           <FormField label="绑定账号" help="选择后，如果账号已绑定 BrowserProfile，会自动带出。">
             <select class="input" v-model="form.accountId" @change="syncProfileFromAccount">
               <option :value="null">不绑定账号</option>
+              <option v-if="!accounts.length" :value="null" disabled>暂无账号，请先到账号中心创建</option>
               <option v-for="item in accounts" :key="item.id" :value="item.id">{{ item.id }} - {{ item.name }}（{{ item.username }}）</option>
             </select>
           </FormField>
@@ -99,6 +102,7 @@
           <FormField label="BrowserProfile" :required="true" help="任务实际执行时使用的浏览器身份。">
             <select class="input" v-model="form.browserProfileId">
               <option :value="null">请选择 BrowserProfile</option>
+              <option v-if="!profiles.length" :value="null" disabled>暂无 BrowserProfile，请先到 Profiles 创建</option>
               <option v-for="item in profiles" :key="item.id" :value="item.id">{{ item.id }} - {{ item.name }}（{{ item.status }}）</option>
             </select>
           </FormField>
@@ -114,6 +118,7 @@
           <FormField v-if="form.schedulingStrategy === 'preferred_agent'" label="指定 Agent">
             <select class="input" v-model="form.preferredAgentId">
               <option :value="null">请选择 Agent</option>
+              <option v-if="!agents.length" :value="null" disabled>暂无 Agent，请先确保 Agent 在线注册</option>
               <option v-for="item in agents" :key="item.id" :value="item.id">{{ item.id }} - {{ item.name }}</option>
             </select>
           </FormField>
@@ -210,6 +215,7 @@ const editorMode = ref('form')
 const message = ref('')
 const deleteOpen = ref(false)
 const deleteId = ref(null)
+const resourceLoading = ref(false)
 
 const form = reactive({
   name: '',
@@ -257,12 +263,14 @@ function resetForm() {
   })
 }
 
-function openCreate() {
+async function openCreate() {
   resetForm()
+  await loadEditorResources()
   editorOpen.value = true
 }
 
-function openEdit(item) {
+async function openEdit(item) {
+  await loadEditorResources()
   editingId.value = item.id
   form.name = item.name || ''
   form.browserProfileId = item.browserProfileId
@@ -284,6 +292,25 @@ function openEdit(item) {
     scheduleForm.randomMinuteStep = parsed.randomMinuteStep || 5
   } catch {}
   editorOpen.value = true
+}
+
+async function loadEditorResources() {
+  resourceLoading.value = true
+  try {
+    const [agentList, profileList, accountList] = await Promise.all([
+      api.agents(), api.profiles(), api.accounts()
+    ])
+    agents.value = agentList
+    profiles.value = profileList
+    accounts.value = accountList
+  } finally {
+    resourceLoading.value = false
+  }
+}
+
+async function refreshEditorResources() {
+  await loadEditorResources()
+  message.value = '任务编辑选项已刷新'
 }
 
 function syncProfileFromAccount() {
@@ -329,14 +356,12 @@ function askDelete(id) {
 }
 
 async function load() {
-  const [taskList, runList, agentList, profileList, accountList] = await Promise.all([
-    api.tasks(), api.runs(), api.agents(), api.profiles(), api.accounts()
+  const [taskList, runList] = await Promise.all([
+    api.tasks(), api.runs()
   ])
   tasks.value = taskList
   runs.value = runList
-  agents.value = agentList
-  profiles.value = profileList
-  accounts.value = accountList
+  await loadEditorResources()
 }
 
 async function save() {
