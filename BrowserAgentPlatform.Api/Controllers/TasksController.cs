@@ -133,8 +133,18 @@ public class TasksController : ControllerBase
         {
             TaskId = task.Id,
             BrowserProfileId = task.BrowserProfileId,
+            LeaseToken = "",
             Status = "queued",
-            MaxRetries = 1
+            RetryCount = 0,
+            MaxRetries = 1,
+            CurrentStepId = "",
+            CurrentStepLabel = "",
+            CurrentUrl = "",
+            ResultJson = "{}",
+            ErrorCode = "",
+            ErrorMessage = "",
+            LastPreviewPath = "",
+            CreatedAt = DateTime.UtcNow
         };
 
         task.LastRunAt = DateTime.UtcNow;
@@ -225,8 +235,18 @@ public class TasksController : ControllerBase
         {
             TaskId = sourceTask.Id,
             BrowserProfileId = sourceTask.BrowserProfileId,
+            LeaseToken = "",
             Status = "queued",
-            MaxRetries = 1
+            RetryCount = 0,
+            MaxRetries = 1,
+            CurrentStepId = "",
+            CurrentStepLabel = "",
+            CurrentUrl = "",
+            ResultJson = "{}",
+            ErrorCode = "",
+            ErrorMessage = "",
+            LastPreviewPath = "",
+            CreatedAt = DateTime.UtcNow
         };
 
         _db.TaskRuns.Add(replayRun);
