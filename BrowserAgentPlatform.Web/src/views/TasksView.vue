@@ -74,7 +74,7 @@
       @confirm="removeTaskConfirmed"
     />
 
-    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+    <div v-if="editorOpen" class="modal-mask">
       <div class="modal-panel card">
         <div class="toolbar">
           <div style="font-weight:700;">{{ editingId ? '编辑任务' : '新增任务' }}</div>
