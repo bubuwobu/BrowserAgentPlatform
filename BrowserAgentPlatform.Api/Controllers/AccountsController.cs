@@ -89,12 +89,15 @@ public class AccountsController : ControllerBase
         var item = await _db.Accounts.FindAsync(id);
         if (item is null) return NotFound();
 
-        var hasTaskBinding = await _db.Tasks.AnyAsync(x => x.AccountId == id);
-        if (hasTaskBinding)
-            return BadRequest("当前账号仍被任务绑定，请先解除任务绑定后再删除。");
+        var boundTasks = await _db.Tasks
+            .Where(x => x.AccountId == id)
+            .ToListAsync();
+
+        foreach (var task in boundTasks)
+            task.AccountId = null;
 
         _db.Accounts.Remove(item);
         await _db.SaveChangesAsync();
-        return Ok(new { ok = true });
+        return Ok(new { ok = true, detachedTasks = boundTasks.Count });
     }
 }

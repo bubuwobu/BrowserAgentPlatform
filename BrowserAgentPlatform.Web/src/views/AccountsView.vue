@@ -141,13 +141,17 @@ function openCreate() {
 }
 
 function openEdit(item) {
+  const profileExists = !item.browserProfileId || profiles.value.some(p => p.id === item.browserProfileId)
+  if (!profileExists) {
+    message.value = `账号 #${item.id} 绑定的 Profile 已不存在，已自动改为“不绑定”。`
+  }
   editingId.value = item.id
   Object.assign(form, {
     name: item.name || '',
     platform: item.platform || 'generic',
     username: item.username || '',
     status: item.status || 'active',
-    browserProfileId: item.browserProfileId,
+    browserProfileId: profileExists ? item.browserProfileId : null,
     credentialJson: item.credentialJson || '{}',
     metadataJson: item.metadataJson || '{}'
   })
