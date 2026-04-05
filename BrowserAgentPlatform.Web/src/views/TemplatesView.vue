@@ -19,14 +19,14 @@
           <div style="font-weight:700;">{{ item.name }}</div>
           <div class="section-actions">
             <button class="btn secondary" @click="openEdit(item)">编辑</button>
-            <button class="btn warn" @click="remove(item.id)">删除</button>
+            <button class="btn warn" @click="askDelete(item.id)">删除</button>
           </div>
         </div>
         <pre style="white-space:pre-wrap;margin-top:8px;">{{ item.definitionJson }}</pre>
       </div>
     </div>
 
-    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+    <div v-if="editorOpen" class="modal-mask">
       <div class="modal-panel card">
         <div class="toolbar">
           <div style="font-weight:700;">{{ editingId ? '编辑模板' : '新增模板' }}</div>
@@ -45,17 +45,29 @@
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="deleteOpen"
+      title="删除模板"
+      message="删除后无法恢复，请确认没有任务仍依赖该模板。"
+      confirm-text="确认删除"
+      @cancel="deleteOpen = false"
+      @confirm="removeConfirmed"
+    />
   </div>
 </template>
 <script setup>
 import { ref, onMounted, reactive } from 'vue'
 import { api } from '../services/api'
-const items = ref([]), message = ref(''), editorOpen = ref(false), editingId = ref(null)
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+
+const items = ref([]), message = ref(''), editorOpen = ref(false), editingId = ref(null), deleteOpen = ref(false), deleteId = ref(null)
 const form = reactive({ name:'示例模板', definitionJson:'{"steps":[],"edges":[]}' })
 async function load(){ items.value = await api.templates() }
 function openCreate(){ editingId.value = null; form.name='示例模板'; form.definitionJson='{"steps":[],"edges":[]}'; editorOpen.value=true }
 function openEdit(item){ editingId.value=item.id; form.name=item.name; form.definitionJson=item.definitionJson; editorOpen.value=true }
+function askDelete(id){ deleteId.value = id; deleteOpen.value = true }
 async function save(){ try{ editingId.value ? await api.updateTemplate(editingId.value, form) : await api.createTemplate(form); message.value='模板保存成功'; editorOpen.value=false; await load() } catch(err){ message.value = err.message || '保存失败' } }
-async function remove(id){ try{ await api.deleteTemplate(id); message.value='模板已删除'; await load() } catch(err){ message.value=err.message || '删除失败' } }
+async function removeConfirmed(){ try{ if (!deleteId.value) return; await api.deleteTemplate(deleteId.value); message.value='模板已删除'; deleteOpen.value = false; deleteId.value = null; await load() } catch(err){ message.value=err.message || '删除失败' } }
 onMounted(load)
 </script>

@@ -19,14 +19,14 @@
           <div style="font-weight:700;">{{ item.name }}</div>
           <div class="section-actions">
             <button class="btn secondary" @click="openEdit(item)">编辑</button>
-            <button class="btn warn" @click="remove(item.id)">删除</button>
+            <button class="btn warn" @click="askDelete(item.id)">删除</button>
           </div>
         </div>
         <pre style="white-space:pre-wrap;margin-top:8px;">{{ item.configJson }}</pre>
       </div>
     </div>
 
-    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+    <div v-if="editorOpen" class="modal-mask">
       <div class="modal-panel card">
         <div class="toolbar">
           <div style="font-weight:700;">{{ editingId ? '编辑指纹模板' : '新增指纹模板' }}</div>
@@ -45,18 +45,30 @@
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="deleteOpen"
+      title="删除指纹模板"
+      message="删除后无法恢复，且已绑定该模板的 Profile 可能受影响。"
+      confirm-text="确认删除"
+      @cancel="deleteOpen = false"
+      @confirm="removeConfirmed"
+    />
   </div>
 </template>
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { api } from '../services/api'
-const items = ref([]), message = ref(''), editorOpen = ref(false), editingId = ref(null)
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+
+const items = ref([]), message = ref(''), editorOpen = ref(false), editingId = ref(null), deleteOpen = ref(false), deleteId = ref(null)
 const defaultJson = '{\n  "userAgent":"Mozilla/5.0",\n  "viewport":{"width":1366,"height":768},\n  "locale":"zh-CN",\n  "timezoneId":"Asia/Singapore"\n}'
 const form = reactive({ name:'默认桌面', configJson: defaultJson })
 async function load(){ items.value = await api.fingerprints() }
 function openCreate(){ editingId.value = null; form.name='默认桌面'; form.configJson=defaultJson; editorOpen.value=true }
 function openEdit(item){ editingId.value=item.id; form.name=item.name; form.configJson=item.configJson; editorOpen.value=true }
+function askDelete(id){ deleteId.value = id; deleteOpen.value = true }
 async function save(){ try{ editingId.value ? await api.updateFingerprint(editingId.value, form) : await api.createFingerprint(form); message.value='保存成功'; editorOpen.value=false; await load() } catch(err){ message.value = err.message || '保存失败' } }
-async function remove(id){ try{ await api.deleteFingerprint(id); message.value='模板已删除'; await load() } catch(err){ message.value = err.message || '删除失败' } }
+async function removeConfirmed(){ try{ if (!deleteId.value) return; await api.deleteFingerprint(deleteId.value); message.value='模板已删除'; deleteOpen.value = false; deleteId.value = null; await load() } catch(err){ message.value = err.message || '删除失败' } }
 onMounted(load)
 </script>
