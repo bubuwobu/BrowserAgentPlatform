@@ -24,9 +24,15 @@ public class TaskScheduleBackgroundService : BackgroundService
             {
                 await TickAsync(stoppingToken);
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Task scheduler tick failed.");
+                await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None);
+                continue;
             }
 
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
