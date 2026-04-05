@@ -23,12 +23,12 @@
           <button class="btn secondary" @click="openEdit(item)">编辑</button>
           <button class="btn secondary" @click="isolationCheck(item.id)">隔离检查</button>
           <button class="btn" @click="testOpen(item.id)">测试打开</button>
-          <button class="btn warn" @click="remove(item.id)">删除</button>
+          <button class="btn warn" @click="askDelete(item.id)">删除</button>
         </div>
       </div>
     </div>
 
-    <div v-if="editorOpen" class="modal-mask" @click.self="editorOpen = false">
+    <div v-if="editorOpen" class="modal-mask">
       <div class="modal-panel card">
         <div class="toolbar">
           <div style="font-weight:700;">{{ editingId ? '编辑 Profile' : '新增 Profile' }}</div>
@@ -57,20 +57,31 @@
         <div class="section-actions" style="margin-top:12px;"><button class="btn" @click="save">{{ editingId ? '保存修改' : '创建 Profile' }}</button></div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="deleteOpen"
+      title="删除 Profile"
+      message="删除后该 Profile 相关的任务绑定可能失效，且无法恢复。"
+      confirm-text="确认删除"
+      @cancel="deleteOpen = false"
+      @confirm="removeConfirmed"
+    />
   </div>
 </template>
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import ProfileStatePanel from '../components/ProfileStatePanel.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { api } from '../services/api'
-const items = ref([]), agents = ref([]), proxies = ref([]), fingerprints = ref([]), message = ref(''), editorOpen = ref(false), editingId = ref(null), board = reactive({ byLifecycle: [] })
+const items = ref([]), agents = ref([]), proxies = ref([]), fingerprints = ref([]), message = ref(''), editorOpen = ref(false), editingId = ref(null), board = reactive({ byLifecycle: [] }), deleteOpen = ref(false), deleteId = ref(null)
 const form = reactive({ name:'', ownerAgentId:null, proxyId:null, fingerprintTemplateId:null, localProfilePath:'', storageRootPath:'', downloadRootPath:'', startupArgsJson:'[]', isolationPolicyJson:'{}', isolationLevel:'strict', workspaceKey:'', profileRootPath:'', artifactRootPath:'', tempRootPath:'', lifecycleState:'created' })
 function resetForm(){ editingId.value=null; Object.assign(form,{ name:'', ownerAgentId:null, proxyId:null, fingerprintTemplateId:null, localProfilePath:'', storageRootPath:'', downloadRootPath:'', startupArgsJson:'[]', isolationPolicyJson:'{}', isolationLevel:'strict', workspaceKey:'', profileRootPath:'', artifactRootPath:'', tempRootPath:'', lifecycleState:'created' }) }
 function openCreate(){ resetForm(); editorOpen.value=true }
 function openEdit(item){ editingId.value=item.id; Object.assign(form,{ name:item.name||'', ownerAgentId:item.ownerAgentId, proxyId:item.proxyId, fingerprintTemplateId:item.fingerprintTemplateId, localProfilePath:item.localProfilePath||'', storageRootPath:item.storageRootPath||'', downloadRootPath:item.downloadRootPath||'', startupArgsJson:item.startupArgsJson||'[]', isolationPolicyJson:item.isolationPolicyJson||'{}', isolationLevel:item.isolationLevel||'strict', workspaceKey:item.workspaceKey||'', profileRootPath:item.profileRootPath||'', artifactRootPath:item.artifactRootPath||'', tempRootPath:item.tempRootPath||'', lifecycleState:item.lifecycleState||'created' }); editorOpen.value=true }
+function askDelete(id){ deleteId.value = id; deleteOpen.value = true }
 async function load(){ const [p,a,px,f,b] = await Promise.all([api.profiles(),api.agents(),api.proxies(),api.fingerprints(),api.profileStateBoard(20)]); items.value=p; agents.value=a; proxies.value=px; fingerprints.value=f; Object.assign(board, b||{}) }
 async function save(){ try{ const body = { ...form }; editingId.value ? await api.updateProfile(editingId.value, body) : await api.createProfile(body); message.value='Profile 保存成功'; editorOpen.value=false; await load() } catch(err){ message.value=err.message || '保存失败' } }
-async function remove(id){ try{ await api.deleteProfile(id); message.value='Profile 已删除'; await load() } catch(err){ message.value = err.message || '删除失败' } }
+async function removeConfirmed(){ try{ if (!deleteId.value) return; await api.deleteProfile(deleteId.value); message.value='Profile 已删除'; deleteOpen.value = false; deleteId.value = null; await load() } catch(err){ message.value = err.message || '删除失败' } }
 async function testOpen(id){ try{ await api.testOpenProfile(id); message.value='已发送测试打开命令' } catch(err){ message.value=err.message || '失败' } }
 async function isolationCheck(id){ try{ const result=await api.profileIsolationCheck(id); message.value=result?.ok?'隔离检查通过':'隔离检查失败'; await load() } catch(err){ message.value=err.message || '检查失败' } }
 onMounted(load)
