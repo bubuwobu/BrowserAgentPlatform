@@ -27,21 +27,21 @@ public class TasksController : ControllerBase
             .Select(x => new
             {
                 x.Id,
-                x.Name,
+                Name = x.Name ?? "",
                 x.BrowserProfileId,
                 x.AccountId,
-                x.SchedulingStrategy,
+                SchedulingStrategy = x.SchedulingStrategy ?? "least_loaded",
                 x.PreferredAgentId,
-                x.Status,
+                Status = x.Status ?? "queued",
                 x.IsEnabled,
-                x.ScheduleType,
-                x.ScheduleConfigJson,
+                ScheduleType = x.ScheduleType ?? "manual",
+                ScheduleConfigJson = x.ScheduleConfigJson ?? "{}",
                 x.NextRunAt,
                 x.LastRunAt,
-                x.PayloadJson,
+                PayloadJson = x.PayloadJson ?? "{}",
                 x.Priority,
                 x.TimeoutSeconds,
-                x.RetryPolicyJson,
+                RetryPolicyJson = x.RetryPolicyJson ?? "{\"maxRetries\":1}",
                 x.CreatedAt
             })
             .ToListAsync();
@@ -133,8 +133,18 @@ public class TasksController : ControllerBase
         {
             TaskId = task.Id,
             BrowserProfileId = task.BrowserProfileId,
+            LeaseToken = "",
             Status = "queued",
-            MaxRetries = 1
+            RetryCount = 0,
+            MaxRetries = 1,
+            CurrentStepId = "",
+            CurrentStepLabel = "",
+            CurrentUrl = "",
+            ResultJson = "{}",
+            ErrorCode = "",
+            ErrorMessage = "",
+            LastPreviewPath = "",
+            CreatedAt = DateTime.UtcNow
         };
 
         task.LastRunAt = DateTime.UtcNow;
@@ -168,17 +178,17 @@ public class TasksController : ControllerBase
                 x.TaskId,
                 x.BrowserProfileId,
                 x.AssignedAgentId,
-                x.LeaseToken,
-                x.Status,
+                LeaseToken = x.LeaseToken ?? "",
+                Status = x.Status ?? "queued",
                 x.RetryCount,
                 x.MaxRetries,
-                x.CurrentStepId,
-                x.CurrentStepLabel,
-                x.CurrentUrl,
-                x.ResultJson,
-                x.ErrorCode,
-                x.ErrorMessage,
-                x.LastPreviewPath,
+                CurrentStepId = x.CurrentStepId ?? "",
+                CurrentStepLabel = x.CurrentStepLabel ?? "",
+                CurrentUrl = x.CurrentUrl ?? "",
+                ResultJson = x.ResultJson ?? "",
+                ErrorCode = x.ErrorCode ?? "",
+                ErrorMessage = x.ErrorMessage ?? "",
+                LastPreviewPath = x.LastPreviewPath ?? "",
                 x.CreatedAt,
                 x.StartedAt,
                 x.HeartbeatAt,
@@ -225,8 +235,18 @@ public class TasksController : ControllerBase
         {
             TaskId = sourceTask.Id,
             BrowserProfileId = sourceTask.BrowserProfileId,
+            LeaseToken = "",
             Status = "queued",
-            MaxRetries = 1
+            RetryCount = 0,
+            MaxRetries = 1,
+            CurrentStepId = "",
+            CurrentStepLabel = "",
+            CurrentUrl = "",
+            ResultJson = "{}",
+            ErrorCode = "",
+            ErrorMessage = "",
+            LastPreviewPath = "",
+            CreatedAt = DateTime.UtcNow
         };
 
         _db.TaskRuns.Add(replayRun);
