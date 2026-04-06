@@ -6,7 +6,7 @@ namespace BrowserAgentPlatform.Api.Data;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(AppDbContext db)
+    public static async Task SeedAsync(AppDbContext db, bool enableDemoData = false)
     {
         // Backward-compatible bootstrap for environments that were created before
         // new tables were introduced (EnsureCreated does not evolve existing schema).
@@ -183,6 +183,11 @@ public static class DbSeeder
         }
 
         await db.SaveChangesAsync();
+
+        if (!enableDemoData)
+        {
+            return;
+        }
 
         var hasDemoTasks = await db.Tasks.AnyAsync(x => x.Name.StartsWith("DEMO Task "));
         if (!hasDemoTasks)

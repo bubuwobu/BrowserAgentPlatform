@@ -93,8 +93,10 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var enableDemoData = configuration.GetValue<bool>("Seed:EnableDemoData");
     await db.Database.EnsureCreatedAsync();
-    await DbSeeder.SeedAsync(db);
+    await DbSeeder.SeedAsync(db, enableDemoData);
 }
 
 app.UseSwagger();
