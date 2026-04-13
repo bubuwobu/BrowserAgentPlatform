@@ -7,10 +7,10 @@
 
 ## 快速开始（重置为纯 Reddit 数据）
 
-如果你希望“一键清空历史数据，只留 Reddit 测试数据”，先执行：
+如果你希望“一键清空历史数据，只留并重建 Reddit 完整测试数据”，先执行：
 
 ```bash
-mysql -u<user> -p<password> <database_name> < sql/reddit_only_reset_seed.sql
+mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
 ```
 
 执行后会自动生成：
