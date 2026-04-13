@@ -323,7 +323,7 @@ public class TaskExecutor
 
             if (item.TryGetProperty("expires", out var expiresEl) && expiresEl.ValueKind == JsonValueKind.Number && expiresEl.TryGetDouble(out var expires))
             {
-                cookie.Expires = expires;
+                cookie.Expires = (float)expires;
             }
 
             if (item.TryGetProperty("httpOnly", out var httpOnlyEl) && (httpOnlyEl.ValueKind is JsonValueKind.True or JsonValueKind.False))
