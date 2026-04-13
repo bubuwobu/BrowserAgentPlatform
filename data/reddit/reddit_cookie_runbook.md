@@ -23,8 +23,8 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
 - 1 个 Agent
 - 1 个 Reddit Profile
 - 1 个 Reddit 账号
-- 1 个 Cookie Bootstrap 模板
-- 1 个可运行任务（queued）
+- 3 个模板（Cookie Bootstrap / Public JSON / Auto Browse）
+- 2 个可运行任务（queued：Cookie Bootstrap + Auto Browse）
 
 你只需要把模板/任务中的 `reddit_session` 替换为真实值即可。
 

@@ -87,6 +87,12 @@ VALUES
   'Reddit Public JSON API Template',
   '{\n  "steps": [\n    { "id": "open_public_json", "type": "open", "data": { "label": "打开 Reddit 公共 JSON 接口", "url": "https://www.reddit.com/r/technology/hot.json?limit=10" } },\n    { "id": "wait_body", "type": "wait_for_element", "data": { "label": "等待 JSON 页面加载", "selector": "body", "timeout": 20000 } },\n    { "id": "extract_raw", "type": "extract_text", "data": { "label": "提取 JSON 原文", "selector": "body" } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "open_public_json", "target": "wait_body" },\n    { "source": "wait_body", "target": "extract_raw" },\n    { "source": "extract_raw", "target": "done" }\n  ],\n  "assertions": [\n    { "type": "text_contains", "label": "返回包含 data 字段", "sourceStepId": "extract_raw", "expected": "\\"data\\"" },\n    { "type": "text_contains", "label": "返回包含 children 字段", "sourceStepId": "extract_raw", "expected": "\\"children\\"" }\n  ]\n}',
   NOW()
+),
+(
+  3,
+  'Reddit Auto Browse Template',
+  '{\n  "steps": [\n    { \"id\": \"open_home\", \"type\": \"open\", \"data\": { \"label\": \"打开 Reddit 首页\", \"url\": \"https://www.reddit.com/\" } },\n    { \"id\": \"wait_home\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待首页\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"scroll_1\", \"type\": \"scroll\", \"data\": { \"label\": \"首次滚动\", \"deltaY\": 900 } },\n    { \"id\": \"wait_1\", \"type\": \"wait_for_timeout\", \"data\": { \"label\": \"停留\", \"timeout\": 2200 } },\n    { \"id\": \"open_sub_tech\", \"type\": \"open\", \"data\": { \"label\": \"打开 technology 板块\", \"url\": \"https://www.reddit.com/r/technology/\" } },\n    { \"id\": \"wait_sub_tech\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待 technology\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"scroll_2\", \"type\": \"scroll\", \"data\": { \"label\": \"二次滚动\", \"deltaY\": 1100 } },\n    { \"id\": \"wait_2\", \"type\": \"wait_for_timeout\", \"data\": { \"label\": \"停留\", \"timeout\": 2600 } },\n    { \"id\": \"open_sub_news\", \"type\": \"open\", \"data\": { \"label\": \"打开 worldnews 板块\", \"url\": \"https://www.reddit.com/r/worldnews/\" } },\n    { \"id\": \"wait_sub_news\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待 worldnews\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"done\", \"type\": \"end_success\", \"data\": { \"label\": \"完成\" } }\n  ],\n  \"edges\": [\n    { \"source\": \"open_home\", \"target\": \"wait_home\" },\n    { \"source\": \"wait_home\", \"target\": \"scroll_1\" },\n    { \"source\": \"scroll_1\", \"target\": \"wait_1\" },\n    { \"source\": \"wait_1\", \"target\": \"open_sub_tech\" },\n    { \"source\": \"open_sub_tech\", \"target\": \"wait_sub_tech\" },\n    { \"source\": \"wait_sub_tech\", \"target\": \"scroll_2\" },\n    { \"source\": \"scroll_2\", \"target\": \"wait_2\" },\n    { \"source\": \"wait_2\", \"target\": \"open_sub_news\" },\n    { \"source\": \"open_sub_news\", \"target\": \"wait_sub_news\" },\n    { \"source\": \"wait_sub_news\", \"target\": \"done\" }\n  ]\n}',
+  NOW()
 );
 
 -- 4) Tasks (one queued + one completed-demo)
@@ -129,6 +135,25 @@ VALUES
   '{}',
   NULL,
   NOW()
+),
+(
+  3,
+  'Reddit Auto Browse Task',
+  1,
+  'profile_owner',
+  NULL,
+  'queued',
+  (SELECT definition_json FROM task_templates WHERE id=3),
+  '{\"maxRetries\":1}',
+  120,
+  420,
+  NOW(),
+  1,
+  1,
+  'manual',
+  '{}',
+  NULL,
+  NULL
 );
 
 -- 5) Runs + logs + artifact (historical flow data for direct UI testing)
