@@ -1,0 +1,172 @@
+-- Reddit-only full flow seed
+-- Purpose: clear existing business/runtime data and rebuild a complete Reddit testing dataset,
+-- including configuration + task templates + tasks + historical runs + logs + artifacts.
+--
+-- Usage:
+--   mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Clear runtime/history
+TRUNCATE TABLE browser_artifacts;
+TRUNCATE TABLE task_run_logs;
+TRUNCATE TABLE run_isolation_reports;
+TRUNCATE TABLE task_runs;
+TRUNCATE TABLE browser_profile_locks;
+TRUNCATE TABLE agent_commands;
+TRUNCATE TABLE audit_events;
+
+-- Clear business config
+TRUNCATE TABLE tasks;
+TRUNCATE TABLE task_templates;
+TRUNCATE TABLE accounts;
+TRUNCATE TABLE account_runtime_identities;
+TRUNCATE TABLE device_profiles;
+TRUNCATE TABLE proxy_bindings;
+TRUNCATE TABLE launch_profiles;
+TRUNCATE TABLE browser_profiles;
+TRUNCATE TABLE agents;
+TRUNCATE TABLE proxies;
+TRUNCATE TABLE fingerprint_templates;
+
+SET FOREIGN_KEY_CHECKS = 1;
+START TRANSACTION;
+
+-- 1) Agent + fingerprint + profile
+INSERT INTO agents (`id`,`agent_key`,`name`,`machine_name`,`status`,`max_parallel_runs`,`current_runs`,`scheduler_tags`,`last_heartbeat_at`,`created_at`)
+VALUES (1,'agent-local-001','Local Agent','LOCAL-MACHINE','online',2,0,'reddit,default',NOW(),NOW());
+
+INSERT INTO fingerprint_templates (`id`,`name`,`fingerprint_json`,`created_at`)
+VALUES (1,'Reddit Desktop Fingerprint','{"browser":"chrome","platform":"windows","locale":"en-US"}',NOW());
+
+INSERT INTO browser_profiles (
+  `id`,`name`,`owner_agent_id`,`proxy_id`,`fingerprint_template_id`,`status`,`isolation_level`,
+  `local_profile_path`,`storage_root_path`,`download_root_path`,`startup_args_json`,`isolation_policy_json`,
+  `runtime_meta_json`,`workspace_key`,`profile_root_path`,`artifact_root_path`,`temp_root_path`,
+  `lifecycle_state`,`last_used_at`,`last_isolation_check_at`,`last_started_at`,`last_stopped_at`,`last_rebuild_at`,`created_at`
+)
+VALUES (
+  1,'REDDIT PROFILE - MAIN',1,NULL,1,'idle','standard',
+  '/tmp/bap/reddit/profile_main','/tmp/bap/reddit/storage_main','/tmp/bap/reddit/download_main',
+  '["--window-size=1366,768","--disable-blink-features=AutomationControlled"]',
+  '{"timezone":"America/Los_Angeles","locale":"en-US","webrtc":"disabled"}',
+  '{"seed":"reddit-only-full-flow"}','reddit_profile_main','/tmp/bap/reddit/profile_main',
+  'runtime/profiles/reddit_main/artifacts','runtime/profiles/reddit_main/temp',
+  'ready',NOW(),NOW(),NULL,NULL,NULL,NOW()
+);
+
+-- 2) Account + runtime identity
+INSERT INTO accounts (`id`,`name`,`platform`,`username`,`status`,`browser_profile_id`,`credential_json`,`metadata_json`,`created_at`)
+VALUES (
+  1,
+  'Reddit Main Account',
+  'reddit',
+  'reddit_main',
+  'active',
+  1,
+  '{"mode":"cookie_bootstrap"}',
+  '{"site":"https://www.reddit.com","note":"replace <replace-reddit_session> before running"}',
+  NOW()
+);
+
+INSERT INTO account_runtime_identities (`id`,`account_id`,`browser_profile_id`,`device_profile_id`,`proxy_binding_id`,`launch_profile_id`,`status`,`created_at`)
+VALUES (1,1,1,NULL,NULL,NULL,'active',NOW());
+
+-- 3) Templates
+INSERT INTO task_templates (`id`,`name`,`definition_json`,`created_at`)
+VALUES
+(
+  1,
+  'Reddit Cookie Bootstrap Template',
+  '{\n  "steps": [\n    {\n      "id": "inject_cookies",\n      "type": "add_cookies",\n      "data": {\n        "label": "注入 Reddit Cookie",\n        "cookies": [\n          {\n            "name": "reddit_session",\n            "value": "<replace-reddit_session>",\n            "domain": ".reddit.com",\n            "path": "/",\n            "httpOnly": true,\n            "secure": true,\n            "sameSite": "Lax"\n          }\n        ]\n      }\n    },\n    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/" } },\n    { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待页面", "selector": "body", "timeout": 20000 } },\n    { "id": "extract_home", "type": "extract_text", "data": { "label": "提取页面文本", "selector": "body" } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "inject_cookies", "target": "open_home" },\n    { "source": "open_home", "target": "wait_home" },\n    { "source": "wait_home", "target": "extract_home" },\n    { "source": "extract_home", "target": "done" }\n  ]\n}',
+  NOW()
+),
+(
+  2,
+  'Reddit Public JSON API Template',
+  '{\n  "steps": [\n    { "id": "open_public_json", "type": "open", "data": { "label": "打开 Reddit 公共 JSON 接口", "url": "https://www.reddit.com/r/technology/hot.json?limit=10" } },\n    { "id": "wait_body", "type": "wait_for_element", "data": { "label": "等待 JSON 页面加载", "selector": "body", "timeout": 20000 } },\n    { "id": "extract_raw", "type": "extract_text", "data": { "label": "提取 JSON 原文", "selector": "body" } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "open_public_json", "target": "wait_body" },\n    { "source": "wait_body", "target": "extract_raw" },\n    { "source": "extract_raw", "target": "done" }\n  ],\n  "assertions": [\n    { "type": "text_contains", "label": "返回包含 data 字段", "sourceStepId": "extract_raw", "expected": "\\"data\\"" },\n    { "type": "text_contains", "label": "返回包含 children 字段", "sourceStepId": "extract_raw", "expected": "\\"children\\"" }\n  ]\n}',
+  NOW()
+);
+
+-- 4) Tasks (one queued + one completed-demo)
+INSERT INTO tasks (`id`,`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
+VALUES
+(
+  1,
+  'Reddit Cookie Bootstrap Task',
+  1,
+  'profile_owner',
+  NULL,
+  'queued',
+  (SELECT definition_json FROM task_templates WHERE id=1),
+  '{"maxRetries":1}',
+  100,
+  300,
+  NOW(),
+  1,
+  1,
+  'manual',
+  '{}',
+  NULL,
+  NULL
+),
+(
+  2,
+  'Reddit Public JSON Task',
+  1,
+  'profile_owner',
+  NULL,
+  'completed',
+  (SELECT definition_json FROM task_templates WHERE id=2),
+  '{"maxRetries":1}',
+  110,
+  300,
+  NOW(),
+  1,
+  1,
+  'manual',
+  '{}',
+  NULL,
+  NOW()
+);
+
+-- 5) Runs + logs + artifact (historical flow data for direct UI testing)
+INSERT INTO task_runs (`id`,`task_id`,`browser_profile_id`,`assigned_agent_id`,`lease_token`,`status`,`retry_count`,`max_retries`,`current_step_id`,`current_step_label`,`current_url`,`result_json`,`error_code`,`error_message`,`last_preview_path`,`created_at`,`started_at`,`heartbeat_at`,`finished_at`)
+VALUES
+(
+  1,2,1,1,'lease-reddit-demo-0001','completed',0,1,'done','完成','https://www.reddit.com/r/technology/hot.json?limit=10',
+  '{"extract_raw":"{\"kind\":\"Listing\",\"data\":{\"children\":[]}}","assertions":{"allPassed":true,"total":2,"passed":2,"failed":0}}',
+  NULL,NULL,'/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()
+),
+(
+  2,1,1,NULL,'','queued',0,1,'','','','{}',NULL,NULL,'',NOW(),NULL,NULL,NULL
+);
+
+INSERT INTO task_run_logs (`id`,`task_run_id`,`level`,`step_id`,`message`,`created_at`)
+VALUES
+(1,1,'info','open_public_json','Executing open',NOW()),
+(2,1,'info','wait_body','Executing wait_for_element',NOW()),
+(3,1,'info','extract_raw','Executing extract_text',NOW()),
+(4,1,'info','done','Executing end_success',NOW()),
+(5,1,'info','','Run finished with status: completed',NOW()),
+(6,2,'info','inject_cookies','Run queued and waiting for execution',NOW());
+
+INSERT INTO browser_artifacts (`id`,`task_run_id`,`artifact_type`,`file_path`,`file_name`,`created_at`)
+VALUES (1,1,'screenshot','data/artifacts/1/final_reddit_json.png','final_reddit_json.png',NOW());
+
+INSERT INTO run_isolation_reports (`id`,`task_run_id`,`profile_id`,`expected_json`,`actual_json`,`storage_check_json`,`network_check_json`,`status`,`created_at`)
+VALUES (1,1,1,'{"level":"standard"}','{"level":"standard"}','{"ok":true}','{"ok":true}','pass',NOW());
+
+INSERT INTO audit_events (`id`,`event_type`,`actor_type`,`actor_id`,`target_type`,`target_id`,`details_json`,`created_at`)
+VALUES
+(1,'seed_reset','system','reddit_only_full_flow_seed','task','1','{"note":"queued cookie bootstrap"}',NOW()),
+(2,'seed_reset','system','reddit_only_full_flow_seed','task','2','{"note":"completed public json run"}',NOW()),
+(3,'demo_seed','system','reddit_only_full_flow_seed','task_run','1','{"status":"completed"}',NOW());
+
+COMMIT;
+
+-- 6) Validation queries
+-- SELECT id, name, status FROM tasks ORDER BY id;
+-- SELECT id, task_id, status, current_url FROM task_runs ORDER BY id;
+-- SELECT id, task_run_id, step_id, message FROM task_run_logs ORDER BY id;
