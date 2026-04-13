@@ -12,8 +12,8 @@ START TRANSACTION;
 
 -- Update template payload placeholders.
 UPDATE task_templates
-SET template_json = REPLACE(
-    REPLACE(template_json, '<replace-reddit_session>', @reddit_session),
+SET definition_json = REPLACE(
+    REPLACE(definition_json, '<replace-reddit_session>', @reddit_session),
     '<replace-with-your-cookie-value>',
     @reddit_session
 )
@@ -22,8 +22,8 @@ WHERE name IN (
   'Reddit Browse Only Template',
   'Reddit Public JSON API Template'
 )
-OR template_json LIKE '%<replace-reddit_session>%'
-OR template_json LIKE '%<replace-with-your-cookie-value>%';
+OR definition_json LIKE '%<replace-reddit_session>%'
+OR definition_json LIKE '%<replace-with-your-cookie-value>%';
 
 -- Update runnable task payload placeholders.
 UPDATE tasks
@@ -39,5 +39,5 @@ WHERE name LIKE 'Reddit%'
 COMMIT;
 
 -- Verify
--- SELECT id, name FROM task_templates WHERE template_json LIKE CONCAT('%', @reddit_session, '%');
+-- SELECT id, name FROM task_templates WHERE definition_json LIKE CONCAT('%', @reddit_session, '%');
 -- SELECT id, name, status FROM tasks WHERE payload_json LIKE CONCAT('%', @reddit_session, '%');

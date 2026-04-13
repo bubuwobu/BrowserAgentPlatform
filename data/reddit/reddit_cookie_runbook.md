@@ -29,6 +29,13 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
 mysql -u<user> -p<password> <database_name> < sql/reddit_set_session.sql
 ```
 
+
+最后做一次校验（确认任务可跑）：
+
+```bash
+mysql -u<user> -p<password> <database_name> < sql/reddit_seed_validate.sql
+```
+
 ---
 
 ## 0. 先决条件
@@ -153,3 +160,24 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_set_session.sql
 1. 在任务开头可加 `clear_cookies`，避免脏会话干扰。  
 2. 先跑“只读任务”，稳定后再逐步加互动动作。  
 3. 给任务加失败回退：一旦检测到登录页/challenge，自动 `end_fail` 并转人工补登。
+
+
+---
+
+## 8) 为什么“刷完 SQL 还是跑不起来”（快速排查）
+
+1. `reddit_set_session.sql` 没执行，模板里还是占位符。  
+   - 现象：任务启动后登录态无效。  
+   - 检查：`task_templates.definition_json` 是否还包含 `<replace-reddit_session>`。
+
+2. Agent 未在线或未拉取任务。  
+   - 现象：任务一直停留 `queued`。  
+   - 检查：`agents.status` 是否 `online`，Agent 进程日志是否正常轮询。
+
+3. Profile 不可用。  
+   - 现象：任务创建后马上失败。  
+   - 检查：`browser_profiles.lifecycle_state` 是否 `ready`，路径是否可写。
+
+4. Cookie 本身失效。  
+   - 现象：`add_cookies` 成功但页面仍跳登录/挑战。  
+   - 处理：重新人工登录导出最新 cookie，保持 IP/指纹稳定。

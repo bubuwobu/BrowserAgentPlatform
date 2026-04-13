@@ -26,7 +26,7 @@ WHERE @profile_id IS NOT NULL;
 SET @account_id := LAST_INSERT_ID();
 
 -- 2a) Browse-only template (open home page)
-INSERT INTO task_templates (`name`, `template_json`, `created_at`)
+INSERT INTO task_templates (`name`, `definition_json`, `created_at`)
 VALUES (
   'Reddit Browse Only Template',
   '{\n  "steps": [\n    { "id": "open_reddit_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://old.reddit.com/" } },\n    { "id": "wait_home_ready", "type": "wait_for_element", "data": { "label": "等待首页内容加载", "selector": "body", "timeout": 20000 } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "open_reddit_home", "target": "wait_home_ready" },\n    { "source": "wait_home_ready", "target": "done" }\n  ]\n}',
@@ -36,7 +36,7 @@ VALUES (
 SET @template_browse_id := LAST_INSERT_ID();
 
 -- 2b) Public JSON API template (recommended when login UI is blocked)
-INSERT INTO task_templates (`name`, `template_json`, `created_at`)
+INSERT INTO task_templates (`name`, `definition_json`, `created_at`)
 VALUES (
   'Reddit Public JSON API Template',
   '{\n  "steps": [\n    { "id": "open_public_json", "type": "open", "data": { "label": "打开 Reddit 公共 JSON 接口", "url": "https://www.reddit.com/r/technology/hot.json?limit=10" } },\n    { "id": "wait_body", "type": "wait_for_element", "data": { "label": "等待 JSON 页面加载", "selector": "body", "timeout": 20000 } },\n    { "id": "extract_raw", "type": "extract_text", "data": { "label": "提取 JSON 原文", "selector": "body" } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "open_public_json", "target": "wait_body" },\n    { "source": "wait_body", "target": "extract_raw" },\n    { "source": "extract_raw", "target": "done" }\n  ],\n  "assertions": [\n    { "type": "text_contains", "label": "返回包含 data 字段", "sourceStepId": "extract_raw", "expected": "\\"data\\"" },\n    { "type": "text_contains", "label": "返回包含 children 字段", "sourceStepId": "extract_raw", "expected": "\\"children\\"" }\n  ]\n}',
@@ -57,7 +57,7 @@ SELECT
   'profile_owner',
   NULL,
   'queued',
-  (SELECT template_json FROM task_templates WHERE id = @template_browse_id),
+  (SELECT definition_json FROM task_templates WHERE id = @template_browse_id),
   '{"maxRetries":1}',
   120,
   300,
@@ -82,7 +82,7 @@ SELECT
   'profile_owner',
   NULL,
   'queued',
-  (SELECT template_json FROM task_templates WHERE id = @template_api_id),
+  (SELECT definition_json FROM task_templates WHERE id = @template_api_id),
   '{"maxRetries":1}',
   100,
   300,

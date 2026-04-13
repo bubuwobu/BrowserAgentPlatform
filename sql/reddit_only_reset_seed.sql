@@ -79,7 +79,7 @@ VALUES (
 SET @account_id := LAST_INSERT_ID();
 
 -- 6) Cookie bootstrap template (replace reddit_session value before run)
-INSERT INTO task_templates (`name`, `template_json`, `created_at`)
+INSERT INTO task_templates (`name`, `definition_json`, `created_at`)
 VALUES (
   'Reddit Cookie Bootstrap Template',
   '{\n  "steps": [\n    {\n      "id": "inject_cookies",\n      "type": "add_cookies",\n      "data": {\n        "label": "注入 Reddit Cookie",\n        "cookies": [\n          {\n            "name": "reddit_session",\n            "value": "<replace-reddit_session>",\n            "domain": ".reddit.com",\n            "path": "/",\n            "httpOnly": true,\n            "secure": true,\n            "sameSite": "Lax"\n          }\n        ]\n      }\n    },\n    {\n      "id": "open_home",\n      "type": "open",\n      "data": {\n        "label": "打开 Reddit 首页",\n        "url": "https://www.reddit.com/"\n      }\n    },\n    {\n      "id": "wait_home",\n      "type": "wait_for_element",\n      "data": {\n        "label": "等待页面",\n        "selector": "body",\n        "timeout": 20000\n      }\n    },\n    {\n      "id": "done",\n      "type": "end_success",\n      "data": {\n        "label": "完成"\n      }\n    }\n  ],\n  "edges": [\n    { "source": "inject_cookies", "target": "open_home" },\n    { "source": "open_home", "target": "wait_home" },\n    { "source": "wait_home", "target": "done" }\n  ]\n}',
@@ -99,7 +99,7 @@ INSERT INTO tasks (
   'profile_owner',
   NULL,
   'queued',
-  (SELECT template_json FROM task_templates WHERE id = @template_id),
+  (SELECT definition_json FROM task_templates WHERE id = @template_id),
   '{"maxRetries":1}',
   100,
   300,

@@ -74,7 +74,7 @@ INSERT INTO account_runtime_identities (`id`,`account_id`,`browser_profile_id`,`
 VALUES (1,1,1,NULL,NULL,NULL,'active',NOW());
 
 -- 3) Templates
-INSERT INTO task_templates (`id`,`name`,`template_json`,`created_at`)
+INSERT INTO task_templates (`id`,`name`,`definition_json`,`created_at`)
 VALUES
 (
   1,
@@ -99,7 +99,7 @@ VALUES
   'profile_owner',
   NULL,
   'queued',
-  (SELECT template_json FROM task_templates WHERE id=1),
+  (SELECT definition_json FROM task_templates WHERE id=1),
   '{"maxRetries":1}',
   100,
   300,
@@ -118,7 +118,7 @@ VALUES
   'profile_owner',
   NULL,
   'completed',
-  (SELECT template_json FROM task_templates WHERE id=2),
+  (SELECT definition_json FROM task_templates WHERE id=2),
   '{"maxRetries":1}',
   110,
   300,
