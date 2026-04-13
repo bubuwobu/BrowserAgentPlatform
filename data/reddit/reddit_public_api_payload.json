@@ -1,0 +1,55 @@
+{
+  "steps": [
+    {
+      "id": "open_public_json",
+      "type": "open",
+      "data": {
+        "label": "打开 Reddit 公共 JSON 接口",
+        "url": "https://www.reddit.com/r/technology/hot.json?limit=10"
+      }
+    },
+    {
+      "id": "wait_body",
+      "type": "wait_for_element",
+      "data": {
+        "label": "等待 JSON 页面加载",
+        "selector": "body",
+        "timeout": 20000
+      }
+    },
+    {
+      "id": "extract_raw",
+      "type": "extract_text",
+      "data": {
+        "label": "提取 JSON 原文",
+        "selector": "body"
+      }
+    },
+    {
+      "id": "done",
+      "type": "end_success",
+      "data": {
+        "label": "完成"
+      }
+    }
+  ],
+  "edges": [
+    { "source": "open_public_json", "target": "wait_body" },
+    { "source": "wait_body", "target": "extract_raw" },
+    { "source": "extract_raw", "target": "done" }
+  ],
+  "assertions": [
+    {
+      "type": "text_contains",
+      "label": "返回包含 data 字段",
+      "sourceStepId": "extract_raw",
+      "expected": "\"data\""
+    },
+    {
+      "type": "text_contains",
+      "label": "返回包含 children 字段",
+      "sourceStepId": "extract_raw",
+      "expected": "\"children\""
+    }
+  ]
+}

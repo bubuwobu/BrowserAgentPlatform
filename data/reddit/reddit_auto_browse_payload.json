@@ -1,0 +1,27 @@
+{
+  "steps": [
+    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/" } },
+    { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待首页", "selector": "body", "timeout": 20000 } },
+    { "id": "scroll_1", "type": "scroll", "data": { "label": "首次滚动", "deltaY": 900 } },
+    { "id": "wait_1", "type": "wait_for_timeout", "data": { "label": "停留", "timeout": 2200 } },
+    { "id": "open_sub_tech", "type": "open", "data": { "label": "打开 technology 板块", "url": "https://www.reddit.com/r/technology/" } },
+    { "id": "wait_sub_tech", "type": "wait_for_element", "data": { "label": "等待 technology", "selector": "body", "timeout": 20000 } },
+    { "id": "scroll_2", "type": "scroll", "data": { "label": "二次滚动", "deltaY": 1100 } },
+    { "id": "wait_2", "type": "wait_for_timeout", "data": { "label": "停留", "timeout": 2600 } },
+    { "id": "open_sub_news", "type": "open", "data": { "label": "打开 worldnews 板块", "url": "https://www.reddit.com/r/worldnews/" } },
+    { "id": "wait_sub_news", "type": "wait_for_element", "data": { "label": "等待 worldnews", "selector": "body", "timeout": 20000 } },
+    { "id": "done", "type": "end_success", "data": { "label": "完成" } }
+  ],
+  "edges": [
+    { "source": "open_home", "target": "wait_home" },
+    { "source": "wait_home", "target": "scroll_1" },
+    { "source": "scroll_1", "target": "wait_1" },
+    { "source": "wait_1", "target": "open_sub_tech" },
+    { "source": "open_sub_tech", "target": "wait_sub_tech" },
+    { "source": "wait_sub_tech", "target": "scroll_2" },
+    { "source": "scroll_2", "target": "wait_2" },
+    { "source": "wait_2", "target": "open_sub_news" },
+    { "source": "open_sub_news", "target": "wait_sub_news" },
+    { "source": "wait_sub_news", "target": "done" }
+  ]
+}
