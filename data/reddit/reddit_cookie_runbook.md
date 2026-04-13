@@ -187,3 +187,8 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_seed_validate.sql
 4. Cookie 本身失效。  
    - 现象：`add_cookies` 成功但页面仍跳登录/挑战。  
    - 处理：重新人工登录导出最新 cookie，保持 IP/指纹稳定。
+
+
+5. API 报错 `Unable to cast object of type 'System.DBNull' to type 'System.String'`。  
+   - 原因：历史种子里 `task_runs` 的字符串字段存在 NULL。  
+   - 处理：执行 `sql/reddit_fix_null_strings.sql` 后重试。

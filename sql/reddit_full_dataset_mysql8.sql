@@ -75,8 +75,8 @@ INSERT INTO tasks (`id`,`name`,`browser_profile_id`,`scheduling_strategy`,`prefe
 
 -- Runs + logs + artifacts
 INSERT INTO task_runs (`id`,`task_id`,`browser_profile_id`,`assigned_agent_id`,`lease_token`,`status`,`retry_count`,`max_retries`,`current_step_id`,`current_step_label`,`current_url`,`result_json`,`error_code`,`error_message`,`last_preview_path`,`created_at`,`started_at`,`heartbeat_at`,`finished_at`) VALUES
-(1,2,1,1,'lease-reddit-demo-0001','completed',0,1,'done','完成','https://www.reddit.com/r/technology/hot.json?limit=10','{"extract_raw":"{\"kind\":\"Listing\",\"data\":{\"children\":[]}}","assertions":{"allPassed":true,"total":2,"passed":2,"failed":0}}',NULL,NULL,'/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()),
-(2,1,1,NULL,'','queued',0,1,'','','','{}',NULL,NULL,'',NOW(),NULL,NULL,NULL);
+(1,2,1,1,'lease-reddit-demo-0001','completed',0,1,'done','完成','https://www.reddit.com/r/technology/hot.json?limit=10','{"extract_raw":"{\"kind\":\"Listing\",\"data\":{\"children\":[]}}","assertions":{"allPassed":true,"total":2,"passed":2,"failed":0}}','','','/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()),
+(2,1,1,NULL,'','queued',0,1,'','','','{}','','','',NOW(),NULL,NULL,NULL);
 
 INSERT INTO task_run_logs (`id`,`task_run_id`,`level`,`step_id`,`message`,`created_at`) VALUES
 (1,1,'info','open_public_json','Executing open',NOW()),

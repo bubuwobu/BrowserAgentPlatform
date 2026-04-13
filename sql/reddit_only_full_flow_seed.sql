@@ -137,10 +137,10 @@ VALUES
 (
   1,2,1,1,'lease-reddit-demo-0001','completed',0,1,'done','完成','https://www.reddit.com/r/technology/hot.json?limit=10',
   '{"extract_raw":"{\"kind\":\"Listing\",\"data\":{\"children\":[]}}","assertions":{"allPassed":true,"total":2,"passed":2,"failed":0}}',
-  NULL,NULL,'/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()
+  '','','/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()
 ),
 (
-  2,1,1,NULL,'','queued',0,1,'','','','{}',NULL,NULL,'',NOW(),NULL,NULL,NULL
+  2,1,1,NULL,'','queued',0,1,'','','','{}','','','',NOW(),NULL,NULL,NULL
 );
 
 INSERT INTO task_run_logs (`id`,`task_run_id`,`level`,`step_id`,`message`,`created_at`)
