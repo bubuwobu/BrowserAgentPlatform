@@ -108,7 +108,44 @@ public class TaskExecutor
                         await page.SetInputFilesAsync(data.GetProperty("selector").GetString()!, data.GetProperty("filePath").GetString()!);
                         break;
                     case "scroll":
-                        await page.EvaluateAsync("window.scrollBy(0, arguments[0])", data.TryGetProperty("deltaY", out var dy) ? dy.GetInt32() : 600);
+                        if (data.TryGetProperty("mode", out var scrollModeEl) &&
+                            string.Equals(scrollModeEl.GetString(), "wheel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var times = data.TryGetProperty("times", out var timesEl) ? Math.Max(1, timesEl.GetInt32()) : 1;
+                            var minDelta = data.TryGetProperty("minDeltaY", out var minDeltaEl) ? minDeltaEl.GetInt32() : 300;
+                            var maxDelta = data.TryGetProperty("maxDeltaY", out var maxDeltaEl) ? maxDeltaEl.GetInt32() : 900;
+                            if (maxDelta < minDelta)
+                            {
+                                (minDelta, maxDelta) = (maxDelta, minDelta);
+                            }
+
+                            var minPause = data.TryGetProperty("minPauseMs", out var minPauseEl) ? minPauseEl.GetInt32() : 120;
+                            var maxPause = data.TryGetProperty("maxPauseMs", out var maxPauseEl) ? maxPauseEl.GetInt32() : 480;
+                            if (maxPause < minPause)
+                            {
+                                (minPause, maxPause) = (maxPause, minPause);
+                            }
+
+                            for (var i = 0; i < times; i++)
+                            {
+                                var delta = Random.Shared.Next(minDelta, maxDelta + 1);
+                                await page.Mouse.WheelAsync(0, delta);
+                                await page.WaitForTimeoutAsync(Random.Shared.Next(minPause, maxPause + 1));
+                            }
+                        }
+                        else
+                        {
+                            await page.EvaluateAsync("window.scrollBy(0, arguments[0])", data.TryGetProperty("deltaY", out var dy) ? dy.GetInt32() : 600);
+                        }
+                        break;
+                    case "random_wait":
+                        {
+                            var minMs = data.TryGetProperty("minMs", out var minMsEl) ? Math.Max(50, minMsEl.GetInt32()) : 1200;
+                            var maxMs = data.TryGetProperty("maxMs", out var maxMsEl) ? Math.Max(minMs, maxMsEl.GetInt32()) : Math.Max(minMs, 3600);
+                            var waitMs = Random.Shared.Next(minMs, maxMs + 1);
+                            await page.WaitForTimeoutAsync(waitMs);
+                            result[currentId] = new { waitedMs = waitMs };
+                        }
                         break;
                     case "execute_js":
                         var jsResult = await page.EvaluateAsync<object>(data.GetProperty("script").GetString()!);

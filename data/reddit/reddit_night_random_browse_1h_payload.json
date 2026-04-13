@@ -1,0 +1,49 @@
+{
+  "steps": [
+    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/" } },
+    { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待首页", "selector": "body", "timeout": 20000 } },
+    { "id": "cycle", "type": "loop", "data": { "label": "循环浏览", "count": 6 } },
+    { "id": "pick_sub", "type": "branch", "data": { "label": "随机选择板块", "mode": "random" } },
+
+    { "id": "open_tech", "type": "open", "data": { "label": "打开 r/technology", "url": "https://www.reddit.com/r/technology/" } },
+    { "id": "open_world", "type": "open", "data": { "label": "打开 r/worldnews", "url": "https://www.reddit.com/r/worldnews/" } },
+    { "id": "open_science", "type": "open", "data": { "label": "打开 r/science", "url": "https://www.reddit.com/r/science/" } },
+
+    { "id": "wait_sub", "type": "wait_for_element", "data": { "label": "等待板块加载", "selector": "body", "timeout": 20000 } },
+    {
+      "id": "scroll_feed",
+      "type": "scroll",
+      "data": {
+        "label": "模拟滚动浏览",
+        "mode": "wheel",
+        "times": 4,
+        "minDeltaY": 320,
+        "maxDeltaY": 980,
+        "minPauseMs": 180,
+        "maxPauseMs": 750
+      }
+    },
+    { "id": "stay_random", "type": "random_wait", "data": { "label": "随机停留", "minMs": 480000, "maxMs": 720000 } },
+
+    { "id": "done", "type": "end_success", "data": { "label": "完成" } }
+  ],
+  "edges": [
+    { "source": "open_home", "target": "wait_home" },
+    { "source": "wait_home", "target": "cycle" },
+
+    { "source": "cycle", "sourceHandle": "loop", "target": "pick_sub" },
+    { "source": "cycle", "sourceHandle": "done", "target": "done" },
+
+    { "source": "pick_sub", "target": "open_tech" },
+    { "source": "pick_sub", "target": "open_world" },
+    { "source": "pick_sub", "target": "open_science" },
+
+    { "source": "open_tech", "target": "wait_sub" },
+    { "source": "open_world", "target": "wait_sub" },
+    { "source": "open_science", "target": "wait_sub" },
+
+    { "source": "wait_sub", "target": "scroll_feed" },
+    { "source": "scroll_feed", "target": "stay_random" },
+    { "source": "stay_random", "target": "cycle" }
+  ]
+}
