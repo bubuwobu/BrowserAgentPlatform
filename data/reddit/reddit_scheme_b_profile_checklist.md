@@ -147,3 +147,32 @@
 
 - **现象**：连续出现 challenge/captcha  
   **处理**：停止自动化 24h，恢复人工浏览一段时间，再小流量重启。
+
+
+---
+
+## 9) 已实现的自动化能力（本次代码变更）
+
+Agent 执行器新增两种步骤类型：
+- `add_cookies`：在任务执行时向浏览器上下文注入 cookies
+- `clear_cookies`：清理当前浏览器上下文 cookies
+
+`add_cookies` 的 `data` 示例：
+```json
+{
+  "label": "注入 Cookie",
+  "cookies": [
+    {
+      "name": "reddit_session",
+      "value": "<cookie-value>",
+      "domain": ".reddit.com",
+      "path": "/",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ]
+}
+```
+
+可直接参考：`data/reddit/reddit_cookie_bootstrap_payload.json`。

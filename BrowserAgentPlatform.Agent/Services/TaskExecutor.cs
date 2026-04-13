@@ -118,6 +118,24 @@ public class TaskExecutor
                         var text = await page.TextContentAsync(data.GetProperty("selector").GetString()!);
                         result[currentId] = text;
                         break;
+                    case "add_cookies":
+                        {
+                            var cookies = ParseCookies(data);
+                            if (cookies.Count > 0)
+                            {
+                                await context.AddCookiesAsync(cookies);
+                            }
+
+                            result[currentId] = new
+                            {
+                                added = cookies.Count
+                            };
+                            break;
+                        }
+                    case "clear_cookies":
+                        await context.ClearCookiesAsync();
+                        result[currentId] = new { cleared = true };
+                        break;
                     case "tiktok_mock_session":
                         result[currentId] = await ExecuteTiktokMockSessionAsync(page, data);
                         break;
@@ -252,6 +270,97 @@ public class TaskExecutor
             if (value.TryGetValue<long>(out var l)) return l;
         }
         return null;
+    }
+
+    private static List<Cookie> ParseCookies(JsonElement data)
+    {
+        var cookies = new List<Cookie>();
+        if (!data.TryGetProperty("cookies", out var cookiesEl) || cookiesEl.ValueKind != JsonValueKind.Array)
+        {
+            return cookies;
+        }
+
+        foreach (var item in cookiesEl.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object) continue;
+
+            var name = item.TryGetProperty("name", out var nameEl) ? (nameEl.GetString() ?? "") : "";
+            var value = item.TryGetProperty("value", out var valueEl) ? (valueEl.GetString() ?? "") : "";
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            var cookie = new Cookie
+            {
+                Name = name,
+                Value = value
+            };
+
+            if (item.TryGetProperty("url", out var urlEl))
+            {
+                var url = urlEl.GetString();
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    cookie.Url = url;
+                }
+            }
+
+            if (item.TryGetProperty("domain", out var domainEl))
+            {
+                var domain = domainEl.GetString();
+                if (!string.IsNullOrWhiteSpace(domain))
+                {
+                    cookie.Domain = domain;
+                }
+            }
+
+            if (item.TryGetProperty("path", out var pathEl))
+            {
+                var path = pathEl.GetString();
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    cookie.Path = path;
+                }
+            }
+
+            if (item.TryGetProperty("expires", out var expiresEl) && expiresEl.ValueKind == JsonValueKind.Number && expiresEl.TryGetDouble(out var expires))
+            {
+                cookie.Expires = expires;
+            }
+
+            if (item.TryGetProperty("httpOnly", out var httpOnlyEl) && (httpOnlyEl.ValueKind is JsonValueKind.True or JsonValueKind.False))
+            {
+                cookie.HttpOnly = httpOnlyEl.GetBoolean();
+            }
+
+            if (item.TryGetProperty("secure", out var secureEl) && (secureEl.ValueKind is JsonValueKind.True or JsonValueKind.False))
+            {
+                cookie.Secure = secureEl.GetBoolean();
+            }
+
+            if (item.TryGetProperty("sameSite", out var sameSiteEl))
+            {
+                var sameSite = sameSiteEl.GetString();
+                if (string.Equals(sameSite, "Strict", StringComparison.OrdinalIgnoreCase))
+                {
+                    cookie.SameSite = SameSiteAttribute.Strict;
+                }
+                else if (string.Equals(sameSite, "None", StringComparison.OrdinalIgnoreCase))
+                {
+                    cookie.SameSite = SameSiteAttribute.None;
+                }
+                else if (string.Equals(sameSite, "Lax", StringComparison.OrdinalIgnoreCase))
+                {
+                    cookie.SameSite = SameSiteAttribute.Lax;
+                }
+            }
+
+            var hasUrl = !string.IsNullOrWhiteSpace(cookie.Url);
+            var hasDomain = !string.IsNullOrWhiteSpace(cookie.Domain);
+            if (!hasUrl && !hasDomain) continue;
+
+            cookies.Add(cookie);
+        }
+
+        return cookies;
     }
 
     private async Task<object> ExecuteTiktokMockSessionAsync(IPage page, JsonElement data)
