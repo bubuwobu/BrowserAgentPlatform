@@ -22,6 +22,13 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_only_reset_seed.sql
 
 你只需要把模板/任务中的 `reddit_session` 替换为真实值即可。
 
+然后把 `reddit_session` 一键写入模板/任务（不用进页面改）：
+
+```bash
+# 先编辑 sql/reddit_set_session.sql 里的 @reddit_session
+mysql -u<user> -p<password> <database_name> < sql/reddit_set_session.sql
+```
+
 ---
 
 ## 0. 先决条件
