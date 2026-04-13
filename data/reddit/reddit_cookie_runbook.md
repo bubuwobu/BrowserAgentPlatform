@@ -9,6 +9,12 @@
 
 如果你希望“一键清空历史数据，只留并重建 Reddit 完整测试数据”，先执行：
 
+如果你是“只导入了表结构、没有任何数据”，请改用：
+
+```bash
+mysql -u<user> -p<password> <database_name> < sql/reddit_full_dataset_mysql8.sql
+```
+
 ```bash
 mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
 ```
