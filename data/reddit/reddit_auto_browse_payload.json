@@ -1,6 +1,6 @@
 {
   "steps": [
-    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/" } },
+    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/r/popular/" } },
     { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待首页", "selector": "body", "timeout": 20000 } },
     { "id": "scroll_1", "type": "scroll", "data": { "label": "首次滚动", "deltaY": 900 } },
     { "id": "wait_1", "type": "wait_for_timeout", "data": { "label": "停留", "timeout": 2200 } },
