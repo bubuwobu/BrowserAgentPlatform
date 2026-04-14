@@ -177,8 +177,30 @@ public class TaskExecutor
                         result[currentId] = await ExecuteTiktokMockSessionAsync(page, data);
                         break;
                     case "loop":
-                        var count = data.TryGetProperty("count", out var cnt) ? cnt.GetInt32() : 1;
-                        result[$"{currentId}_loopRemaining"] = count;
+                        {
+                            var key = $"{currentId}_loopRemaining";
+                            if (!result.ContainsKey(key))
+                            {
+                                var count = data.TryGetProperty("count", out var cnt) ? cnt.GetInt32() : 1;
+                                if (data.TryGetProperty("minCount", out var minCountEl) || data.TryGetProperty("maxCount", out var maxCountEl))
+                                {
+                                    var minCount = data.TryGetProperty("minCount", out minCountEl) ? minCountEl.GetInt32() : count;
+                                    var maxCount = data.TryGetProperty("maxCount", out maxCountEl) ? maxCountEl.GetInt32() : count;
+                                    if (maxCount < minCount)
+                                    {
+                                        (minCount, maxCount) = (maxCount, minCount);
+                                    }
+
+                                    count = Random.Shared.Next(Math.Max(1, minCount), Math.Max(1, maxCount) + 1);
+                                }
+                                else
+                                {
+                                    count = Math.Max(1, count);
+                                }
+
+                                result[key] = count;
+                            }
+                        }
                         break;
                     case "branch":
                         // branch resolution happens on edges below
