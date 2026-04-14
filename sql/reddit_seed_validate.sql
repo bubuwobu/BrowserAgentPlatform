@@ -31,7 +31,8 @@ SELECT
 FROM tasks
 WHERE name = 'Reddit Night Random Browse 1H Task'
   AND status = 'queued'
-  AND is_enabled = 1;
+  AND is_enabled = 1
+  AND schedule_type = 'manual';
 
 SELECT
   'unexpected_queued_short_browse' AS check_name,

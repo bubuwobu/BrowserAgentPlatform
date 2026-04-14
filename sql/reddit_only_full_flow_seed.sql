@@ -175,8 +175,8 @@ VALUES
   NOW(),
   1,
   1,
-  'daily_window_random',
-  '{\"timezone\":\"America/Los_Angeles\",\"windowStart\":\"23:00\",\"windowEnd\":\"02:00\",\"maxRunsPerDay\":1,\"randomMinuteStep\":10,\"targetDurationMinutes\":60}',
+  'manual',
+  '{}',
   NULL,
   NULL
 );

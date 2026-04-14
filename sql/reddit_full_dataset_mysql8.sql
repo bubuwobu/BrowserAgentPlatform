@@ -75,7 +75,7 @@ INSERT INTO tasks (`id`,`name`,`browser_profile_id`,`scheduling_strategy`,`prefe
 (1,'Reddit Cookie Bootstrap Task',1,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=1),'{"maxRetries":1}',100,300,NOW(),1,0,'manual','{}',NULL,NOW()),
 (2,'Reddit Public JSON Task',1,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=2),'{"maxRetries":1}',110,300,NOW(),1,1,'manual','{}',NULL,NOW()),
 (3,'Reddit Auto Browse Task',1,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=3),'{"maxRetries":1}',120,420,NOW(),1,0,'manual','{}',NULL,NOW()),
-(4,'Reddit Night Random Browse 1H Task',1,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=4),'{"maxRetries":1}',90,5400,NOW(),1,1,'daily_window_random','{\"timezone\":\"America/Los_Angeles\",\"windowStart\":\"23:00\",\"windowEnd\":\"02:00\",\"maxRunsPerDay\":1,\"randomMinuteStep\":10,\"targetDurationMinutes\":60}',NULL,NULL);
+(4,'Reddit Night Random Browse 1H Task',1,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=4),'{"maxRetries":1}',90,5400,NOW(),1,1,'manual','{}',NULL,NULL);
 
 -- Runs + logs + artifacts
 INSERT INTO task_runs (`id`,`task_id`,`browser_profile_id`,`assigned_agent_id`,`lease_token`,`status`,`retry_count`,`max_retries`,`current_step_id`,`current_step_label`,`current_url`,`result_json`,`error_code`,`error_message`,`last_preview_path`,`created_at`,`started_at`,`heartbeat_at`,`finished_at`) VALUES
