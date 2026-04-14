@@ -25,6 +25,21 @@ FROM tasks
 WHERE name LIKE 'Reddit%'
 ORDER BY id;
 
+SELECT
+  'queued_night_random_task' AS check_name,
+  COUNT(*) AS cnt
+FROM tasks
+WHERE name = 'Reddit Night Random Browse 1H Task'
+  AND status = 'queued'
+  AND is_enabled = 1;
+
+SELECT
+  'unexpected_queued_short_browse' AS check_name,
+  COUNT(*) AS cnt
+FROM tasks
+WHERE name = 'Reddit Auto Browse Task'
+  AND status = 'queued';
+
 -- Recent runs/logs
 SELECT id, task_id, status, current_step_id, created_at, finished_at
 FROM task_runs

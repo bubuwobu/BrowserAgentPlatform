@@ -40,6 +40,7 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_full_dataset_mysql8.sql
 ```
 
 > 适用于你现在“只有表结构、没有任何记录”的数据库。
+> 导入后默认会把 **Reddit Night Random Browse 1H Task** 置为 `queued`，短流程的 **Reddit Auto Browse Task** 置为 `completed`（避免只跑 3 次就结束）。
 
 ### C. 重建 Reddit 完整测试数据（推荐）
 ```bash

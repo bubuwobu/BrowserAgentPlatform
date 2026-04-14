@@ -72,15 +72,15 @@ INSERT INTO task_templates (`id`,`name`,`definition_json`,`created_at`) VALUES
 
 -- Tasks
 INSERT INTO tasks (`id`,`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`) VALUES
-(1,'Reddit Cookie Bootstrap Task',1,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=1),'{"maxRetries":1}',100,300,NOW(),1,1,'manual','{}',NULL,NULL),
+(1,'Reddit Cookie Bootstrap Task',1,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=1),'{"maxRetries":1}',100,300,NOW(),1,0,'manual','{}',NULL,NOW()),
 (2,'Reddit Public JSON Task',1,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=2),'{"maxRetries":1}',110,300,NOW(),1,1,'manual','{}',NULL,NOW()),
-(3,'Reddit Auto Browse Task',1,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=3),'{"maxRetries":1}',120,420,NOW(),1,1,'manual','{}',NULL,NULL),
-(4,'Reddit Night Random Browse 1H Task',1,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=4),'{"maxRetries":1}',130,5400,NOW(),1,1,'daily_window_random','{\"timezone\":\"America/Los_Angeles\",\"windowStart\":\"23:00\",\"windowEnd\":\"02:00\",\"maxRunsPerDay\":1,\"randomMinuteStep\":10,\"targetDurationMinutes\":60}',NULL,NULL);
+(3,'Reddit Auto Browse Task',1,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=3),'{"maxRetries":1}',120,420,NOW(),1,0,'manual','{}',NULL,NOW()),
+(4,'Reddit Night Random Browse 1H Task',1,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=4),'{"maxRetries":1}',90,5400,NOW(),1,1,'daily_window_random','{\"timezone\":\"America/Los_Angeles\",\"windowStart\":\"23:00\",\"windowEnd\":\"02:00\",\"maxRunsPerDay\":1,\"randomMinuteStep\":10,\"targetDurationMinutes\":60}',NULL,NULL);
 
 -- Runs + logs + artifacts
 INSERT INTO task_runs (`id`,`task_id`,`browser_profile_id`,`assigned_agent_id`,`lease_token`,`status`,`retry_count`,`max_retries`,`current_step_id`,`current_step_label`,`current_url`,`result_json`,`error_code`,`error_message`,`last_preview_path`,`created_at`,`started_at`,`heartbeat_at`,`finished_at`) VALUES
 (1,2,1,1,'lease-reddit-demo-0001','completed',0,1,'done','完成','https://www.reddit.com/r/technology/hot.json?limit=10','{"extract_raw":"{\"kind\":\"Listing\",\"data\":{\"children\":[]}}","assertions":{"allPassed":true,"total":2,"passed":2,"failed":0}}','','','/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()),
-(2,1,1,NULL,'','queued',0,1,'','','','{}','','','',NOW(),NULL,NULL,NULL);
+(2,4,1,NULL,'','queued',0,1,'','','','{}','','','',NOW(),NULL,NULL,NULL);
 
 INSERT INTO task_run_logs (`id`,`task_run_id`,`level`,`step_id`,`message`,`created_at`) VALUES
 (1,1,'info','open_public_json','Executing open',NOW()),
@@ -88,7 +88,7 @@ INSERT INTO task_run_logs (`id`,`task_run_id`,`level`,`step_id`,`message`,`creat
 (3,1,'info','extract_raw','Executing extract_text',NOW()),
 (4,1,'info','done','Executing end_success',NOW()),
 (5,1,'info','','Run finished with status: completed',NOW()),
-(6,2,'info','inject_cookies','Run queued and waiting for execution',NOW());
+(6,2,'info','cycle','Night random browse queued and waiting for execution',NOW());
 
 INSERT INTO browser_artifacts (`id`,`task_run_id`,`artifact_type`,`file_path`,`file_name`,`created_at`)
 VALUES (1,1,'screenshot','data/artifacts/1/final_reddit_json.png','final_reddit_json.png',NOW());

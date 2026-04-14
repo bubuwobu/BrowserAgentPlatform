@@ -93,6 +93,12 @@ VALUES
   'Reddit Auto Browse Template',
   '{\n  "steps": [\n    { \"id\": \"open_home\", \"type\": \"open\", \"data\": { \"label\": \"打开 Reddit 首页\", \"url\": \"https://www.reddit.com/\" } },\n    { \"id\": \"wait_home\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待首页\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"scroll_1\", \"type\": \"scroll\", \"data\": { \"label\": \"首次滚动\", \"deltaY\": 900 } },\n    { \"id\": \"wait_1\", \"type\": \"wait_for_timeout\", \"data\": { \"label\": \"停留\", \"timeout\": 2200 } },\n    { \"id\": \"open_sub_tech\", \"type\": \"open\", \"data\": { \"label\": \"打开 technology 板块\", \"url\": \"https://www.reddit.com/r/technology/\" } },\n    { \"id\": \"wait_sub_tech\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待 technology\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"scroll_2\", \"type\": \"scroll\", \"data\": { \"label\": \"二次滚动\", \"deltaY\": 1100 } },\n    { \"id\": \"wait_2\", \"type\": \"wait_for_timeout\", \"data\": { \"label\": \"停留\", \"timeout\": 2600 } },\n    { \"id\": \"open_sub_news\", \"type\": \"open\", \"data\": { \"label\": \"打开 worldnews 板块\", \"url\": \"https://www.reddit.com/r/worldnews/\" } },\n    { \"id\": \"wait_sub_news\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待 worldnews\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"done\", \"type\": \"end_success\", \"data\": { \"label\": \"完成\" } }\n  ],\n  \"edges\": [\n    { \"source\": \"open_home\", \"target\": \"wait_home\" },\n    { \"source\": \"wait_home\", \"target\": \"scroll_1\" },\n    { \"source\": \"scroll_1\", \"target\": \"wait_1\" },\n    { \"source\": \"wait_1\", \"target\": \"open_sub_tech\" },\n    { \"source\": \"open_sub_tech\", \"target\": \"wait_sub_tech\" },\n    { \"source\": \"wait_sub_tech\", \"target\": \"scroll_2\" },\n    { \"source\": \"scroll_2\", \"target\": \"wait_2\" },\n    { \"source\": \"wait_2\", \"target\": \"open_sub_news\" },\n    { \"source\": \"open_sub_news\", \"target\": \"wait_sub_news\" },\n    { \"source\": \"wait_sub_news\", \"target\": \"done\" }\n  ]\n}',
   NOW()
+),
+(
+  4,
+  'Reddit Night Random Browse 1H Template',
+  '{\n  "steps": [\n    { \"id\": \"open_home\", \"type\": \"open\", \"data\": { \"label\": \"打开 Reddit 首页\", \"url\": \"https://www.reddit.com/\" } },\n    { \"id\": \"wait_home\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待首页\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"start_wait\", \"type\": \"wait_for_timeout\", \"data\": { \"label\": \"打开后停留约5秒\", \"timeout\": 5000 } },\n    { \"id\": \"cycle\", \"type\": \"loop\", \"data\": { \"label\": \"循环浏览约1小时\", \"minCount\": 70, \"maxCount\": 90 } },\n    { \"id\": \"pick_sub\", \"type\": \"branch\", \"data\": { \"label\": \"随机选择板块\", \"mode\": \"random\" } },\n    { \"id\": \"open_tech\", \"type\": \"open\", \"data\": { \"label\": \"打开 r/technology\", \"url\": \"https://www.reddit.com/r/technology/\" } },\n    { \"id\": \"open_world\", \"type\": \"open\", \"data\": { \"label\": \"打开 r/worldnews\", \"url\": \"https://www.reddit.com/r/worldnews/\" } },\n    { \"id\": \"open_science\", \"type\": \"open\", \"data\": { \"label\": \"打开 r/science\", \"url\": \"https://www.reddit.com/r/science/\" } },\n    { \"id\": \"wait_sub\", \"type\": \"wait_for_element\", \"data\": { \"label\": \"等待板块加载\", \"selector\": \"body\", \"timeout\": 20000 } },\n    { \"id\": \"scroll_feed\", \"type\": \"scroll\", \"data\": { \"label\": \"模拟滚动浏览\", \"mode\": \"wheel\", \"times\": 1, \"minDeltaY\": 450, \"maxDeltaY\": 1200, \"minPauseMs\": 120, \"maxPauseMs\": 400 } },\n    { \"id\": \"stay_random\", \"type\": \"random_wait\", \"data\": { \"label\": \"每次滚动间隔30-60秒\", \"minMs\": 30000, \"maxMs\": 60000 } },\n    { \"id\": \"done\", \"type\": \"end_success\", \"data\": { \"label\": \"完成\" } }\n  ],\n  \"edges\": [\n    { \"source\": \"open_home\", \"target\": \"wait_home\" },\n    { \"source\": \"wait_home\", \"target\": \"start_wait\" },\n    { \"source\": \"start_wait\", \"target\": \"cycle\" },\n    { \"source\": \"cycle\", \"sourceHandle\": \"loop\", \"target\": \"pick_sub\" },\n    { \"source\": \"cycle\", \"sourceHandle\": \"done\", \"target\": \"done\" },\n    { \"source\": \"pick_sub\", \"target\": \"open_tech\" },\n    { \"source\": \"pick_sub\", \"target\": \"open_world\" },\n    { \"source\": \"pick_sub\", \"target\": \"open_science\" },\n    { \"source\": \"open_tech\", \"target\": \"wait_sub\" },\n    { \"source\": \"open_world\", \"target\": \"wait_sub\" },\n    { \"source\": \"open_science\", \"target\": \"wait_sub\" },\n    { \"source\": \"wait_sub\", \"target\": \"scroll_feed\" },\n    { \"source\": \"scroll_feed\", \"target\": \"stay_random\" },\n    { \"source\": \"stay_random\", \"target\": \"cycle\" }\n  ]\n}',
+  NOW()
 );
 
 -- 4) Tasks (one queued + one completed-demo)
@@ -104,18 +110,18 @@ VALUES
   1,
   'profile_owner',
   NULL,
-  'queued',
+  'completed',
   (SELECT definition_json FROM task_templates WHERE id=1),
   '{"maxRetries":1}',
   100,
   300,
   NOW(),
   1,
-  1,
+  0,
   'manual',
   '{}',
   NULL,
-  NULL
+  NOW()
 ),
 (
   2,
@@ -142,16 +148,35 @@ VALUES
   1,
   'profile_owner',
   NULL,
-  'queued',
+  'completed',
   (SELECT definition_json FROM task_templates WHERE id=3),
   '{\"maxRetries\":1}',
   120,
   420,
   NOW(),
   1,
-  1,
+  0,
   'manual',
   '{}',
+  NULL,
+  NOW()
+),
+(
+  4,
+  'Reddit Night Random Browse 1H Task',
+  1,
+  'profile_owner',
+  NULL,
+  'queued',
+  (SELECT definition_json FROM task_templates WHERE id=4),
+  '{\"maxRetries\":1}',
+  90,
+  5400,
+  NOW(),
+  1,
+  1,
+  'daily_window_random',
+  '{\"timezone\":\"America/Los_Angeles\",\"windowStart\":\"23:00\",\"windowEnd\":\"02:00\",\"maxRunsPerDay\":1,\"randomMinuteStep\":10,\"targetDurationMinutes\":60}',
   NULL,
   NULL
 );
@@ -165,7 +190,7 @@ VALUES
   '','','/data/artifacts/1/final_reddit_json.png',NOW(),NOW(),NOW(),NOW()
 ),
 (
-  2,1,1,NULL,'','queued',0,1,'','','','{}','','','',NOW(),NULL,NULL,NULL
+  2,4,1,NULL,'','queued',0,1,'','','','{}','','','',NOW(),NULL,NULL,NULL
 );
 
 INSERT INTO task_run_logs (`id`,`task_run_id`,`level`,`step_id`,`message`,`created_at`)
@@ -175,7 +200,7 @@ VALUES
 (3,1,'info','extract_raw','Executing extract_text',NOW()),
 (4,1,'info','done','Executing end_success',NOW()),
 (5,1,'info','','Run finished with status: completed',NOW()),
-(6,2,'info','inject_cookies','Run queued and waiting for execution',NOW());
+(6,2,'info','cycle','Night random browse queued and waiting for execution',NOW());
 
 INSERT INTO browser_artifacts (`id`,`task_run_id`,`artifact_type`,`file_path`,`file_name`,`created_at`)
 VALUES (1,1,'screenshot','data/artifacts/1/final_reddit_json.png','final_reddit_json.png',NOW());
@@ -185,7 +210,7 @@ VALUES (1,1,1,'{"level":"standard"}','{"level":"standard"}','{"ok":true}','{"ok"
 
 INSERT INTO audit_events (`id`,`event_type`,`actor_type`,`actor_id`,`target_type`,`target_id`,`details_json`,`created_at`)
 VALUES
-(1,'seed_reset','system','reddit_only_full_flow_seed','task','1','{"note":"queued cookie bootstrap"}',NOW()),
+(1,'seed_reset','system','reddit_only_full_flow_seed','task','4','{"note":"queued night random browse"}',NOW()),
 (2,'seed_reset','system','reddit_only_full_flow_seed','task','2','{"note":"completed public json run"}',NOW()),
 (3,'demo_seed','system','reddit_only_full_flow_seed','task_run','1','{"status":"completed"}',NOW());
 
