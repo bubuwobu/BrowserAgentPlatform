@@ -108,7 +108,44 @@ public class TaskExecutor
                         await page.SetInputFilesAsync(data.GetProperty("selector").GetString()!, data.GetProperty("filePath").GetString()!);
                         break;
                     case "scroll":
-                        await page.EvaluateAsync("window.scrollBy(0, arguments[0])", data.TryGetProperty("deltaY", out var dy) ? dy.GetInt32() : 600);
+                        if (data.TryGetProperty("mode", out var scrollModeEl) &&
+                            string.Equals(scrollModeEl.GetString(), "wheel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var times = data.TryGetProperty("times", out var timesEl) ? Math.Max(1, timesEl.GetInt32()) : 1;
+                            var minDelta = data.TryGetProperty("minDeltaY", out var minDeltaEl) ? minDeltaEl.GetInt32() : 300;
+                            var maxDelta = data.TryGetProperty("maxDeltaY", out var maxDeltaEl) ? maxDeltaEl.GetInt32() : 900;
+                            if (maxDelta < minDelta)
+                            {
+                                (minDelta, maxDelta) = (maxDelta, minDelta);
+                            }
+
+                            var minPause = data.TryGetProperty("minPauseMs", out var minPauseEl) ? minPauseEl.GetInt32() : 120;
+                            var maxPause = data.TryGetProperty("maxPauseMs", out var maxPauseEl) ? maxPauseEl.GetInt32() : 480;
+                            if (maxPause < minPause)
+                            {
+                                (minPause, maxPause) = (maxPause, minPause);
+                            }
+
+                            for (var i = 0; i < times; i++)
+                            {
+                                var delta = Random.Shared.Next(minDelta, maxDelta + 1);
+                                await page.Mouse.WheelAsync(0, delta);
+                                await page.WaitForTimeoutAsync(Random.Shared.Next(minPause, maxPause + 1));
+                            }
+                        }
+                        else
+                        {
+                            await page.EvaluateAsync("window.scrollBy(0, arguments[0])", data.TryGetProperty("deltaY", out var dy) ? dy.GetInt32() : 600);
+                        }
+                        break;
+                    case "random_wait":
+                        {
+                            var minMs = data.TryGetProperty("minMs", out var minMsEl) ? Math.Max(50, minMsEl.GetInt32()) : 1200;
+                            var maxMs = data.TryGetProperty("maxMs", out var maxMsEl) ? Math.Max(minMs, maxMsEl.GetInt32()) : Math.Max(minMs, 3600);
+                            var waitMs = Random.Shared.Next(minMs, maxMs + 1);
+                            await page.WaitForTimeoutAsync(waitMs);
+                            result[currentId] = new { waitedMs = waitMs };
+                        }
                         break;
                     case "execute_js":
                         var jsResult = await page.EvaluateAsync<object>(data.GetProperty("script").GetString()!);
@@ -118,12 +155,52 @@ public class TaskExecutor
                         var text = await page.TextContentAsync(data.GetProperty("selector").GetString()!);
                         result[currentId] = text;
                         break;
+                    case "add_cookies":
+                        {
+                            var cookies = ParseCookies(data);
+                            if (cookies.Count > 0)
+                            {
+                                await context.AddCookiesAsync(cookies);
+                            }
+
+                            result[currentId] = new
+                            {
+                                added = cookies.Count
+                            };
+                            break;
+                        }
+                    case "clear_cookies":
+                        await context.ClearCookiesAsync();
+                        result[currentId] = new { cleared = true };
+                        break;
                     case "tiktok_mock_session":
                         result[currentId] = await ExecuteTiktokMockSessionAsync(page, data);
                         break;
                     case "loop":
-                        var count = data.TryGetProperty("count", out var cnt) ? cnt.GetInt32() : 1;
-                        result[$"{currentId}_loopRemaining"] = count;
+                        {
+                            var key = $"{currentId}_loopRemaining";
+                            if (!result.ContainsKey(key))
+                            {
+                                var count = data.TryGetProperty("count", out var cnt) ? cnt.GetInt32() : 1;
+                                if (data.TryGetProperty("minCount", out var minCountEl) || data.TryGetProperty("maxCount", out var maxCountEl))
+                                {
+                                    var minCount = data.TryGetProperty("minCount", out minCountEl) ? minCountEl.GetInt32() : count;
+                                    var maxCount = data.TryGetProperty("maxCount", out maxCountEl) ? maxCountEl.GetInt32() : count;
+                                    if (maxCount < minCount)
+                                    {
+                                        (minCount, maxCount) = (maxCount, minCount);
+                                    }
+
+                                    count = Random.Shared.Next(Math.Max(1, minCount), Math.Max(1, maxCount) + 1);
+                                }
+                                else
+                                {
+                                    count = Math.Max(1, count);
+                                }
+
+                                result[key] = count;
+                            }
+                        }
                         break;
                     case "branch":
                         // branch resolution happens on edges below
@@ -252,6 +329,97 @@ public class TaskExecutor
             if (value.TryGetValue<long>(out var l)) return l;
         }
         return null;
+    }
+
+    private static List<Cookie> ParseCookies(JsonElement data)
+    {
+        var cookies = new List<Cookie>();
+        if (!data.TryGetProperty("cookies", out var cookiesEl) || cookiesEl.ValueKind != JsonValueKind.Array)
+        {
+            return cookies;
+        }
+
+        foreach (var item in cookiesEl.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object) continue;
+
+            var name = item.TryGetProperty("name", out var nameEl) ? (nameEl.GetString() ?? "") : "";
+            var value = item.TryGetProperty("value", out var valueEl) ? (valueEl.GetString() ?? "") : "";
+            if (string.IsNullOrWhiteSpace(name)) continue;
+
+            var cookie = new Cookie
+            {
+                Name = name,
+                Value = value
+            };
+
+            if (item.TryGetProperty("url", out var urlEl))
+            {
+                var url = urlEl.GetString();
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    cookie.Url = url;
+                }
+            }
+
+            if (item.TryGetProperty("domain", out var domainEl))
+            {
+                var domain = domainEl.GetString();
+                if (!string.IsNullOrWhiteSpace(domain))
+                {
+                    cookie.Domain = domain;
+                }
+            }
+
+            if (item.TryGetProperty("path", out var pathEl))
+            {
+                var path = pathEl.GetString();
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    cookie.Path = path;
+                }
+            }
+
+            if (item.TryGetProperty("expires", out var expiresEl) && expiresEl.ValueKind == JsonValueKind.Number && expiresEl.TryGetDouble(out var expires))
+            {
+                cookie.Expires = (float)expires;
+            }
+
+            if (item.TryGetProperty("httpOnly", out var httpOnlyEl) && (httpOnlyEl.ValueKind is JsonValueKind.True or JsonValueKind.False))
+            {
+                cookie.HttpOnly = httpOnlyEl.GetBoolean();
+            }
+
+            if (item.TryGetProperty("secure", out var secureEl) && (secureEl.ValueKind is JsonValueKind.True or JsonValueKind.False))
+            {
+                cookie.Secure = secureEl.GetBoolean();
+            }
+
+            if (item.TryGetProperty("sameSite", out var sameSiteEl))
+            {
+                var sameSite = sameSiteEl.GetString();
+                if (string.Equals(sameSite, "Strict", StringComparison.OrdinalIgnoreCase))
+                {
+                    cookie.SameSite = SameSiteAttribute.Strict;
+                }
+                else if (string.Equals(sameSite, "None", StringComparison.OrdinalIgnoreCase))
+                {
+                    cookie.SameSite = SameSiteAttribute.None;
+                }
+                else if (string.Equals(sameSite, "Lax", StringComparison.OrdinalIgnoreCase))
+                {
+                    cookie.SameSite = SameSiteAttribute.Lax;
+                }
+            }
+
+            var hasUrl = !string.IsNullOrWhiteSpace(cookie.Url);
+            var hasDomain = !string.IsNullOrWhiteSpace(cookie.Domain);
+            if (!hasUrl && !hasDomain) continue;
+
+            cookies.Add(cookie);
+        }
+
+        return cookies;
     }
 
     private async Task<object> ExecuteTiktokMockSessionAsync(IPage page, JsonElement data)
