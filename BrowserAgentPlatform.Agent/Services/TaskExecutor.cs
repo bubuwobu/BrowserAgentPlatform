@@ -82,16 +82,22 @@ public class TaskExecutor
                         await page.ClickAsync(data.GetProperty("selector").GetString()!);
                         break;
                     case "type":
-                        await HumanTypeAsync(
-                            page,
-                            data.GetProperty("selector").GetString()!,
-                            data.GetProperty("value").GetString() ?? "",
-                            data.TryGetProperty("minKeyDelayMs", out var minTypeDelay) ? minTypeDelay.GetInt32() : 35,
-                            data.TryGetProperty("maxKeyDelayMs", out var maxTypeDelay) ? maxTypeDelay.GetInt32() : 160,
-                            data.TryGetProperty("typoRate", out var typeTypoRate) ? typeTypoRate.GetDouble() : 0.02,
-                            data.TryGetProperty("backspaceRate", out var typeBackspaceRate) ? typeBackspaceRate.GetDouble() : 0.02
-                        );
-                        break;
+                        {
+                            var inputValue = data.TryGetProperty("value", out var valueEl)
+                                ? (valueEl.GetString() ?? string.Empty)
+                                : (data.TryGetProperty("text", out var textEl) ? (textEl.GetString() ?? string.Empty) : string.Empty);
+
+                            await HumanTypeAsync(
+                                page,
+                                data.GetProperty("selector").GetString()!,
+                                inputValue,
+                                data.TryGetProperty("minKeyDelayMs", out var minTypeDelay) ? minTypeDelay.GetInt32() : 35,
+                                data.TryGetProperty("maxKeyDelayMs", out var maxTypeDelay) ? maxTypeDelay.GetInt32() : 160,
+                                data.TryGetProperty("typoRate", out var typeTypoRate) ? typeTypoRate.GetDouble() : 0.02,
+                                data.TryGetProperty("backspaceRate", out var typeBackspaceRate) ? typeBackspaceRate.GetDouble() : 0.02
+                            );
+                            break;
+                        }
                     case "wait_for_element":
                         await page.WaitForSelectorAsync(data.GetProperty("selector").GetString()!, new() { Timeout = data.TryGetProperty("timeout", out var timeout) ? timeout.GetInt32() : 10000 });
                         break;
@@ -157,6 +163,11 @@ public class TaskExecutor
                         break;
                     case "add_cookies":
                         {
+                            if (data.ValueKind == JsonValueKind.Object && data.GetRawText().Contains("<replace-", StringComparison.OrdinalIgnoreCase))
+                            {
+                                throw new InvalidOperationException("Cookie payload still contains placeholder value. Please replace reddit_session before running.");
+                            }
+
                             var cookies = ParseCookies(data);
                             if (cookies.Count > 0)
                             {
