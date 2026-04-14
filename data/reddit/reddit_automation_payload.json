@@ -1,0 +1,32 @@
+{
+  "steps": [
+    {
+      "id": "open_reddit_home",
+      "type": "open",
+      "data": {
+        "label": "打开 Reddit 首页",
+        "url": "https://old.reddit.com/"
+      }
+    },
+    {
+      "id": "wait_home_ready",
+      "type": "wait_for_element",
+      "data": {
+        "label": "等待首页内容加载",
+        "selector": "body",
+        "timeout": 20000
+      }
+    },
+    {
+      "id": "done",
+      "type": "end_success",
+      "data": {
+        "label": "完成"
+      }
+    }
+  ],
+  "edges": [
+    { "source": "open_reddit_home", "target": "wait_home_ready" },
+    { "source": "wait_home_ready", "target": "done" }
+  ]
+}
