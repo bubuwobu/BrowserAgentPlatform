@@ -2,7 +2,8 @@
   "steps": [
     { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/" } },
     { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待首页", "selector": "body", "timeout": 20000 } },
-    { "id": "cycle", "type": "loop", "data": { "label": "循环浏览", "minCount": 5, "maxCount": 8 } },
+    { "id": "start_wait", "type": "wait_for_timeout", "data": { "label": "打开后停留约5秒", "timeout": 5000 } },
+    { "id": "cycle", "type": "loop", "data": { "label": "循环浏览约1小时", "minCount": 70, "maxCount": 90 } },
     { "id": "pick_sub", "type": "branch", "data": { "label": "随机选择板块", "mode": "random" } },
 
     { "id": "open_tech", "type": "open", "data": { "label": "打开 r/technology", "url": "https://www.reddit.com/r/technology/" } },
@@ -16,20 +17,21 @@
       "data": {
         "label": "模拟滚动浏览",
         "mode": "wheel",
-        "times": 4,
-        "minDeltaY": 320,
-        "maxDeltaY": 980,
-        "minPauseMs": 180,
-        "maxPauseMs": 750
+        "times": 1,
+        "minDeltaY": 450,
+        "maxDeltaY": 1200,
+        "minPauseMs": 120,
+        "maxPauseMs": 400
       }
     },
-    { "id": "stay_random", "type": "random_wait", "data": { "label": "随机停留", "minMs": 420000, "maxMs": 780000 } },
+    { "id": "stay_random", "type": "random_wait", "data": { "label": "每次滚动间隔30-60秒", "minMs": 30000, "maxMs": 60000 } },
 
     { "id": "done", "type": "end_success", "data": { "label": "完成" } }
   ],
   "edges": [
     { "source": "open_home", "target": "wait_home" },
-    { "source": "wait_home", "target": "cycle" },
+    { "source": "wait_home", "target": "start_wait" },
+    { "source": "start_wait", "target": "cycle" },
 
     { "source": "cycle", "sourceHandle": "loop", "target": "pick_sub" },
     { "source": "cycle", "sourceHandle": "done", "target": "done" },
