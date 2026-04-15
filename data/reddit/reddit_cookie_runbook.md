@@ -55,7 +55,7 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_seed_validate.sql
 ## 1) 获取 Cookie（推荐方式：浏览器开发者工具）
 
 ### 方法 A：Chrome DevTools 手工复制（推荐）
-1. 用你要复用的账号在浏览器中手工登录 Reddit（`https://www.reddit.com/`）。
+1. 用你要复用的账号在浏览器中手工登录 Reddit（`https://www.reddit.com/r/popular/`）。
 2. 打开开发者工具：`F12`。
 3. 进入 `Application`（应用） -> `Storage` -> `Cookies` -> 选择 `https://www.reddit.com`。
 4. 找到关键 cookie（例如 `reddit_session`，以及你业务需要的其他 cookie）。
@@ -107,7 +107,7 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_seed_validate.sql
 
 建议最小流程（先验证会话可用）：
 1. `inject_cookies`（type=`add_cookies`）
-2. `open_home`（type=`open`，url=`https://www.reddit.com/`）
+2. `open_home`（type=`open`，url=`https://www.reddit.com/r/popular/`）
 3. `wait_home`（type=`wait_for_element`，selector=`body`）
 4. `done`（type=`end_success`）
 

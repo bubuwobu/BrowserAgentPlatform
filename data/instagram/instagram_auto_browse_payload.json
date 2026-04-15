@@ -1,0 +1,19 @@
+{
+  "steps": [
+    { "id": "open_explore", "type": "open", "data": { "label": "打开 Instagram Explore", "url": "https://www.instagram.com/explore/" } },
+    { "id": "wait_page", "type": "wait_for_element", "data": { "label": "等待页面加载", "selector": "body", "timeout": 20000 } },
+    { "id": "scroll_1", "type": "scroll", "data": { "label": "首次滚动", "deltaY": 900 } },
+    { "id": "wait_1", "type": "wait_for_timeout", "data": { "label": "停留", "timeout": 2500 } },
+    { "id": "scroll_2", "type": "scroll", "data": { "label": "二次滚动", "deltaY": 1200 } },
+    { "id": "wait_2", "type": "wait_for_timeout", "data": { "label": "停留", "timeout": 2800 } },
+    { "id": "done", "type": "end_success", "data": { "label": "完成" } }
+  ],
+  "edges": [
+    { "source": "open_explore", "target": "wait_page" },
+    { "source": "wait_page", "target": "scroll_1" },
+    { "source": "scroll_1", "target": "wait_1" },
+    { "source": "wait_1", "target": "scroll_2" },
+    { "source": "scroll_2", "target": "wait_2" },
+    { "source": "wait_2", "target": "done" }
+  ]
+}

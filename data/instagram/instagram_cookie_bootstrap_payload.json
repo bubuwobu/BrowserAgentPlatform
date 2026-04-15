@@ -1,0 +1,29 @@
+{
+  "steps": [
+    {
+      "id": "inject_cookies",
+      "type": "add_cookies",
+      "data": {
+        "label": "注入 Instagram 会话 Cookie",
+        "cookies": [
+          {
+            "name": "sessionid",
+            "value": "<replace-instagram_sessionid>",
+            "url": "https://www.instagram.com",
+            "httpOnly": true,
+            "secure": true,
+            "sameSite": "Lax"
+          }
+        ]
+      }
+    },
+    { "id": "open_home", "type": "open", "data": { "label": "打开 Instagram 首页", "url": "https://www.instagram.com/" } },
+    { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待页面", "selector": "body", "timeout": 20000 } },
+    { "id": "done", "type": "end_success", "data": { "label": "完成" } }
+  ],
+  "edges": [
+    { "source": "inject_cookies", "target": "open_home" },
+    { "source": "open_home", "target": "wait_home" },
+    { "source": "wait_home", "target": "done" }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "steps": [
-    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit Popular", "url": "https://www.reddit.com/r/popular/" } },
-    { "id": "wait_home", "type": "wait_for_element", "data": { "label": "等待 Popular 页面", "selector": "body", "timeout": 20000 } },
+    { "id": "open_explore", "type": "open", "data": { "label": "打开 Instagram Explore", "url": "https://www.instagram.com/explore/" } },
+    { "id": "wait_page", "type": "wait_for_element", "data": { "label": "等待页面加载", "selector": "body", "timeout": 20000 } },
     { "id": "start_wait", "type": "wait_for_timeout", "data": { "label": "首屏停留", "timeout": 5000 } },
     { "id": "cycle", "type": "loop", "data": { "label": "循环浏览约1小时", "minCount": 70, "maxCount": 90 } },
     {
@@ -11,18 +11,18 @@
         "label": "模拟滚动浏览",
         "mode": "wheel",
         "times": 1,
-        "minDeltaY": 450,
-        "maxDeltaY": 1200,
+        "minDeltaY": 420,
+        "maxDeltaY": 1150,
         "minPauseMs": 120,
-        "maxPauseMs": 400
+        "maxPauseMs": 420
       }
     },
     { "id": "stay_random", "type": "random_wait", "data": { "label": "每次滚动间隔30-60秒", "minMs": 30000, "maxMs": 60000 } },
     { "id": "done", "type": "end_success", "data": { "label": "完成" } }
   ],
   "edges": [
-    { "source": "open_home", "target": "wait_home" },
-    { "source": "wait_home", "target": "start_wait" },
+    { "source": "open_explore", "target": "wait_page" },
+    { "source": "wait_page", "target": "start_wait" },
     { "source": "start_wait", "target": "cycle" },
     { "source": "cycle", "sourceHandle": "loop", "target": "scroll_feed" },
     { "source": "cycle", "sourceHandle": "done", "target": "done" },
