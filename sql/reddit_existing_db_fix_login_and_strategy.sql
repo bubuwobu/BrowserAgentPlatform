@@ -63,12 +63,17 @@ WHERE name = 'Reddit Night Random Browse 1H Task';
 
 -- ensure cookie bootstrap can run manually
 UPDATE tasks
-SET status='queued', is_enabled=1, schedule_type='manual', schedule_config_json='{}'
+SET status='queued', is_enabled=1, schedule_type='manual', schedule_config_json='{}', timeout_seconds=300
 WHERE name='Reddit Cookie Bootstrap Task';
 
 -- ensure night task can run manually after cookie bootstrap
 UPDATE tasks
-SET status='queued', is_enabled=1, schedule_type='manual', schedule_config_json='{}'
+SET status='queued', is_enabled=1, schedule_type='manual', schedule_config_json='{}', timeout_seconds=5400
 WHERE name='Reddit Night Random Browse 1H Task';
+
+-- disable short auto-browse task to avoid accidental runs that look like "only browsed a few times"
+UPDATE tasks
+SET is_enabled=0, status='completed', timeout_seconds=420
+WHERE name='Reddit Auto Browse Task';
 
 COMMIT;

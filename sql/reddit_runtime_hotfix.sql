@@ -45,4 +45,13 @@ SET payload_json = REPLACE(
 WHERE name LIKE 'Reddit%'
   AND payload_json LIKE '%"name": "reddit_session"%';
 
+-- enforce sensible timeouts for long-run vs short-run Reddit tasks
+UPDATE tasks
+SET timeout_seconds = 5400
+WHERE name = 'Reddit Night Random Browse 1H Task';
+
+UPDATE tasks
+SET timeout_seconds = 420
+WHERE name = 'Reddit Auto Browse Task';
+
 COMMIT;
