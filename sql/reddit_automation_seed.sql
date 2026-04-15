@@ -29,7 +29,7 @@ SET @account_id := LAST_INSERT_ID();
 INSERT INTO task_templates (`name`, `definition_json`, `created_at`)
 VALUES (
   'Reddit Browse Only Template',
-  '{\n  "steps": [\n    { "id": "open_reddit_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://old.reddit.com/" } },\n    { "id": "wait_home_ready", "type": "wait_for_element", "data": { "label": "等待首页内容加载", "selector": "body", "timeout": 20000 } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "open_reddit_home", "target": "wait_home_ready" },\n    { "source": "wait_home_ready", "target": "done" }\n  ]\n}',
+  '{\n  "steps": [\n    { "id": "open_reddit_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/r/popular/" } },\n    { "id": "wait_home_ready", "type": "wait_for_element", "data": { "label": "等待首页内容加载", "selector": "body", "timeout": 20000 } },\n    { "id": "done", "type": "end_success", "data": { "label": "完成" } }\n  ],\n  "edges": [\n    { "source": "open_reddit_home", "target": "wait_home_ready" },\n    { "source": "wait_home_ready", "target": "done" }\n  ]\n}',
   NOW()
 );
 

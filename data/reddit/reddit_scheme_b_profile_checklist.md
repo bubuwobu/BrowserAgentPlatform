@@ -122,7 +122,7 @@
 ```json
 {
   "steps": [
-    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/" } },
+    { "id": "open_home", "type": "open", "data": { "label": "打开 Reddit 首页", "url": "https://www.reddit.com/r/popular/" } },
     { "id": "wait_feed", "type": "wait_for_element", "data": { "label": "等待内容区域", "selector": "body", "timeout": 20000 } },
     { "id": "extract_title", "type": "extract_text", "data": { "label": "提取页面文本", "selector": "body" } },
     { "id": "done", "type": "end_success", "data": { "label": "完成" } }
