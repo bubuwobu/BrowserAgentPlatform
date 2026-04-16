@@ -3,7 +3,7 @@
 ## 文件说明
 - `instagram_cookie_bootstrap_payload.json`：Instagram 登录态注入示例（基于 `sessionid`）。
 - `instagram_auto_browse_payload.json`：短流程冒烟（打开 Explore -> 两次滚动 -> 完成）。
-- `instagram_night_random_browse_1h_payload.json`：约 1 小时随机滚动浏览（loop + random_wait）。
+- `instagram_night_random_browse_1h_payload.json`：约 1 小时随机滚动浏览（固定 `https://www.instagram.com/explore/`，loop + random_wait + 低频随机点赞）。
 - `../../sql/instagram_automation_seed.sql`：向现有库增量写入 Instagram 账号、模板和可运行任务。
 - `../../sql/instagram_set_session.sql`：一键把 `sessionid` 写入 Instagram 模板与任务。
 - `../../sql/reddit_ins_full_flow_seed.sql`：一条 SQL 同时重建 Reddit + Instagram 两平台的模板和任务。
