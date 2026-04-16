@@ -8,17 +8,37 @@
 SET NAMES utf8mb4;
 START TRANSACTION;
 
-SET @profile_id := (SELECT id FROM browser_profiles ORDER BY id LIMIT 1);
+SET @reddit_profile_id := (SELECT id FROM browser_profiles ORDER BY id LIMIT 1);
+SET @ins_profile_id := (SELECT id FROM browser_profiles WHERE id <> @reddit_profile_id ORDER BY id LIMIT 1);
+
+-- If there is no second profile, clone one from Reddit profile for Instagram
+INSERT INTO browser_profiles (
+  `name`,`owner_agent_id`,`proxy_id`,`fingerprint_template_id`,`status`,`isolation_level`,
+  `local_profile_path`,`storage_root_path`,`download_root_path`,`startup_args_json`,`isolation_policy_json`,`runtime_meta_json`,
+  `workspace_key`,`profile_root_path`,`artifact_root_path`,`temp_root_path`,`lifecycle_state`,`last_used_at`,`last_isolation_check_at`,`last_started_at`,`last_stopped_at`,`last_rebuild_at`,`created_at`
+)
+SELECT
+  CONCAT(bp.name, ' - INS'), bp.owner_agent_id, bp.proxy_id, bp.fingerprint_template_id, 'idle', bp.isolation_level,
+  CONCAT(bp.local_profile_path, '_ins'), CONCAT(bp.storage_root_path, '_ins'), CONCAT(bp.download_root_path, '_ins'),
+  bp.startup_args_json, bp.isolation_policy_json, bp.runtime_meta_json,
+  CONCAT(bp.workspace_key, '_ins_', UNIX_TIMESTAMP()), CONCAT(bp.profile_root_path, '_ins'), CONCAT(bp.artifact_root_path, '_ins'), CONCAT(bp.temp_root_path, '_ins'),
+  'created', NULL, NULL, NULL, NULL, NULL, NOW()
+FROM browser_profiles bp
+WHERE bp.id = @reddit_profile_id
+  AND @ins_profile_id IS NULL;
+
+SET @ins_profile_id := COALESCE(@ins_profile_id, NULLIF(LAST_INSERT_ID(), 0));
+SET @ins_profile_id := COALESCE(@ins_profile_id, @reddit_profile_id);
 
 -- Accounts
 INSERT INTO accounts (`name`, `platform`, `username`, `status`, `browser_profile_id`, `credential_json`, `metadata_json`, `created_at`)
-SELECT 'Reddit Main Account','reddit','reddit_main','active',@profile_id,'{"mode":"cookie_bootstrap"}','{"site":"https://www.reddit.com","note":"replace <replace-reddit_session>"}',NOW()
-WHERE @profile_id IS NOT NULL
+SELECT 'Reddit Main Account','reddit','reddit_main','active',@reddit_profile_id,'{"mode":"cookie_bootstrap"}','{"site":"https://www.reddit.com","note":"replace <replace-reddit_session>"}',NOW()
+WHERE @reddit_profile_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM accounts WHERE platform='reddit' AND username='reddit_main');
 
 INSERT INTO accounts (`name`, `platform`, `username`, `status`, `browser_profile_id`, `credential_json`, `metadata_json`, `created_at`)
-SELECT 'Instagram Main Account','instagram','instagram_main','active',@profile_id,'{"mode":"cookie_bootstrap"}','{"site":"https://www.instagram.com/","note":"replace <replace-instagram_sessionid>"}',NOW()
-WHERE @profile_id IS NOT NULL
+SELECT 'Instagram Main Account','instagram','instagram_main','active',@ins_profile_id,'{"mode":"cookie_bootstrap"}','{"site":"https://www.instagram.com/","note":"replace <replace-instagram_sessionid>"}',NOW()
+WHERE @ins_profile_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM accounts WHERE platform='instagram' AND username='instagram_main');
 
 SET @reddit_account_id := (SELECT id FROM accounts WHERE platform='reddit' AND username='reddit_main' ORDER BY id DESC LIMIT 1);
@@ -123,14 +143,14 @@ SET @rtpl_auto := (SELECT id FROM task_templates WHERE name='Reddit Auto Browse 
 SET @rtpl_night := (SELECT id FROM task_templates WHERE name='Reddit Night Random Browse 1H Template' ORDER BY id DESC LIMIT 1);
 
 INSERT INTO tasks (`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
-SELECT 'Reddit Cookie Bootstrap Task',@profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@rtpl_cookie),'{"maxRetries":1}',120,300,NOW(),@reddit_account_id,1,'manual','{}',NULL,NULL
-WHERE @profile_id IS NOT NULL;
+SELECT 'Reddit Cookie Bootstrap Task',@reddit_profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@rtpl_cookie),'{"maxRetries":1}',120,300,NOW(),@reddit_account_id,1,'manual','{}',NULL,NULL
+WHERE @reddit_profile_id IS NOT NULL;
 INSERT INTO tasks (`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
-SELECT 'Reddit Auto Browse Task',@profile_id,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=@rtpl_auto),'{"maxRetries":1}',120,420,NOW(),@reddit_account_id,0,'manual','{}',NULL,NULL
-WHERE @profile_id IS NOT NULL;
+SELECT 'Reddit Auto Browse Task',@reddit_profile_id,'profile_owner',NULL,'completed',(SELECT definition_json FROM task_templates WHERE id=@rtpl_auto),'{"maxRetries":1}',120,420,NOW(),@reddit_account_id,0,'manual','{}',NULL,NULL
+WHERE @reddit_profile_id IS NOT NULL;
 INSERT INTO tasks (`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
-SELECT 'Reddit Night Random Browse 1H Task',@profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@rtpl_night),'{"maxRetries":1}',90,5400,NOW(),@reddit_account_id,1,'manual','{}',NULL,NULL
-WHERE @profile_id IS NOT NULL;
+SELECT 'Reddit Night Random Browse 1H Task',@reddit_profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@rtpl_night),'{"maxRetries":1}',90,5400,NOW(),@reddit_account_id,1,'manual','{}',NULL,NULL
+WHERE @reddit_profile_id IS NOT NULL;
 
 -- Rebuild Instagram templates/tasks (by stable names)
 DELETE FROM tasks WHERE name IN (
@@ -231,13 +251,13 @@ SET @itpl_auto := (SELECT id FROM task_templates WHERE name='Instagram Auto Brow
 SET @itpl_night := (SELECT id FROM task_templates WHERE name='Instagram Night Random Browse 1H Template' ORDER BY id DESC LIMIT 1);
 
 INSERT INTO tasks (`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
-SELECT 'Instagram Cookie Bootstrap Task',@profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@itpl_cookie),'{"maxRetries":1}',120,300,NOW(),@ins_account_id,1,'manual','{}',NULL,NULL
-WHERE @profile_id IS NOT NULL;
+SELECT 'Instagram Cookie Bootstrap Task',@ins_profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@itpl_cookie),'{"maxRetries":1}',120,300,NOW(),@ins_account_id,1,'manual','{}',NULL,NULL
+WHERE @ins_profile_id IS NOT NULL;
 INSERT INTO tasks (`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
-SELECT 'Instagram Auto Browse Task',@profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@itpl_auto),'{"maxRetries":1}',120,420,NOW(),@ins_account_id,1,'manual','{}',NULL,NULL
-WHERE @profile_id IS NOT NULL;
+SELECT 'Instagram Auto Browse Task',@ins_profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@itpl_auto),'{"maxRetries":1}',120,420,NOW(),@ins_account_id,1,'manual','{}',NULL,NULL
+WHERE @ins_profile_id IS NOT NULL;
 INSERT INTO tasks (`name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`)
-SELECT 'Instagram Night Random Browse 1H Task',@profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@itpl_night),'{"maxRetries":1}',90,5400,NOW(),@ins_account_id,1,'manual','{}',NULL,NULL
-WHERE @profile_id IS NOT NULL;
+SELECT 'Instagram Night Random Browse 1H Task',@ins_profile_id,'profile_owner',NULL,'queued',(SELECT definition_json FROM task_templates WHERE id=@itpl_night),'{"maxRetries":1}',90,5400,NOW(),@ins_account_id,1,'manual','{}',NULL,NULL
+WHERE @ins_profile_id IS NOT NULL;
 
 COMMIT;
