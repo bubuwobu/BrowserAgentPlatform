@@ -153,6 +153,58 @@ public class TaskExecutor
                             result[currentId] = new { waitedMs = waitMs };
                         }
                         break;
+                    case "random_like":
+                        {
+                            var chance = data.TryGetProperty("chance", out var chanceEl)
+                                ? Math.Clamp(chanceEl.GetDouble(), 0, 1)
+                                : 0.35;
+                            var shouldLike = Random.Shared.NextDouble() <= chance;
+                            var selectorCandidates = data.TryGetProperty("selectors", out var selectorsEl) && selectorsEl.ValueKind == JsonValueKind.Array
+                                ? selectorsEl.EnumerateArray()
+                                    .Where(x => x.ValueKind == JsonValueKind.String)
+                                    .Select(x => x.GetString())
+                                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                                    .Cast<string>()
+                                    .ToList()
+                                : new List<string>();
+
+                            if (!shouldLike)
+                            {
+                                result[currentId] = new { acted = false, reason = "skip_by_chance", chance };
+                                break;
+                            }
+
+                            var clicked = false;
+                            string? usedSelector = null;
+                            foreach (var selector in selectorCandidates)
+                            {
+                                var count = await page.Locator(selector).CountAsync();
+                                if (count <= 0) continue;
+                                var index = Random.Shared.Next(0, count);
+                                var target = page.Locator(selector).Nth(index);
+                                if (!await target.IsVisibleAsync()) continue;
+
+                                await target.ScrollIntoViewIfNeededAsync();
+                                await page.WaitForTimeoutAsync(Random.Shared.Next(200, 700));
+                                await target.ClickAsync(new LocatorClickOptions
+                                {
+                                    Delay = Random.Shared.Next(30, 140)
+                                });
+
+                                clicked = true;
+                                usedSelector = selector;
+                                break;
+                            }
+
+                            result[currentId] = new
+                            {
+                                acted = clicked,
+                                reason = clicked ? "clicked" : "no_visible_target",
+                                chance,
+                                selector = usedSelector
+                            };
+                        }
+                        break;
                     case "execute_js":
                         var jsResult = await page.EvaluateAsync<object>(data.GetProperty("script").GetString()!);
                         result[currentId] = jsResult;
