@@ -9,6 +9,8 @@
 - `../../sql/reddit_ins_full_flow_seed.sql`：一条 SQL 同时重建 Reddit + Instagram 两平台的模板和任务。
 - `../../sql/reddit_ins_seed_validate.sql`：排查“启动后没反应”的就绪状态。
 - `../../sql/reddit_ins_kickoff.sql`：强制把关键任务入队（bootstrap 优先）。
+- `../../sql/instagram_priority_kickoff.sql`：当 Reddit 与 Instagram 共用一个 Profile 时，强制 Instagram 先跑。
+- `../../sql/reddit_ins_parallel_enable.sql`：给 Reddit 和 Instagram 绑定不同 Profile，实现两平台并行运行。
 
 ## 建议执行顺序
 1. 先导入 SQL：
@@ -34,3 +36,19 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_ins_seed_validate.sql
 mysql -u<user> -p<password> <database_name> < sql/reddit_ins_kickoff.sql
 ```
 > 如果 `profiles_total = 0` 或 `agents_online = 0`，任务不会真正执行。
+
+## Reddit 在跑、Instagram 不跑（常见原因）
+同一个 `browser_profile_id` 不能并发执行两个任务（会有 profile lock）。  
+如果 Reddit 长任务先占住了 profile，Instagram 会一直排队。
+
+可执行：
+```bash
+mysql -u<user> -p<password> <database_name> < sql/instagram_priority_kickoff.sql
+```
+这会临时暂停 Reddit、释放锁并优先拉起 Instagram bootstrap。
+
+## 让 Reddit 和 Instagram 一起跑（并行）
+```bash
+mysql -u<user> -p<password> <database_name> < sql/reddit_ins_parallel_enable.sql
+```
+该脚本会尽量为 Instagram 绑定第二个 `browser_profile_id`；如果不存在，会自动克隆一个 Profile。

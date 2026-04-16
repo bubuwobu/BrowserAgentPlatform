@@ -21,6 +21,13 @@ FROM tasks
 WHERE name LIKE 'Reddit %' OR name LIKE 'Instagram %'
 ORDER BY id DESC;
 
+-- Check whether Reddit and Instagram are sharing the same profile
+SELECT platform, browser_profile_id, COUNT(*) AS account_cnt
+FROM accounts
+WHERE platform IN ('reddit','instagram')
+GROUP BY platform, browser_profile_id
+ORDER BY browser_profile_id, platform;
+
 SELECT id, task_id, status, assigned_agent_id, current_step_id, heartbeat_at, created_at
 FROM task_runs
 ORDER BY id DESC
