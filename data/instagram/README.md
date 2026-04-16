@@ -7,6 +7,8 @@
 - `../../sql/instagram_automation_seed.sql`：向现有库增量写入 Instagram 账号、模板和可运行任务。
 - `../../sql/instagram_set_session.sql`：一键把 `sessionid` 写入 Instagram 模板与任务。
 - `../../sql/reddit_ins_full_flow_seed.sql`：一条 SQL 同时重建 Reddit + Instagram 两平台的模板和任务。
+- `../../sql/reddit_ins_seed_validate.sql`：排查“启动后没反应”的就绪状态。
+- `../../sql/reddit_ins_kickoff.sql`：强制把关键任务入队（bootstrap 优先）。
 
 ## 建议执行顺序
 1. 先导入 SQL：
@@ -25,3 +27,10 @@ mysql -u<user> -p<password> <database_name> < sql/instagram_set_session.sql
 - 此示例默认是“浏览流程联调优先”，不包含登录动作。
 - 如果你后续需要账号态，可以按 Reddit 的 cookie/bootstrap 方式扩展（把 `add_cookies` 放到首节点）。
 - `sessionid` 获取建议：先在同一台机器手工登录 Instagram，然后从浏览器开发者工具 Cookies 里复制 `sessionid`。
+
+## 启动后“没反应”快速处理
+```bash
+mysql -u<user> -p<password> <database_name> < sql/reddit_ins_seed_validate.sql
+mysql -u<user> -p<password> <database_name> < sql/reddit_ins_kickoff.sql
+```
+> 如果 `profiles_total = 0` 或 `agents_online = 0`，任务不会真正执行。
