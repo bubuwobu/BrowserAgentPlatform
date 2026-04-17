@@ -42,7 +42,7 @@ SET @agent_id := COALESCE(@agent_id, NULLIF(LAST_INSERT_ID(), 0));
 -- 4) Ensure there is at least one fingerprint template
 SET @fp_id := (SELECT id FROM fingerprint_templates ORDER BY id LIMIT 1);
 
-INSERT INTO fingerprint_templates (`name`, `fingerprint_json`, `created_at`)
+INSERT INTO fingerprint_templates (`name`, `config_json`, `created_at`)
 SELECT 'Social Browse Fingerprint', '{"browser":"chrome","platform":"windows","locale":"en-US"}', NOW()
 WHERE @fp_id IS NULL;
 
