@@ -104,7 +104,10 @@ public class SchedulerService
             run.AssignedAgentId = agent.Id;
             run.HeartbeatAt = DateTime.UtcNow;
 
-            agent.CurrentRuns += 1;
+            // NOTE:
+            // We intentionally avoid updating agents.current_runs here.
+            // Heartbeat endpoint is the single writer for that field, which prevents
+            // lock contention/timeouts between pull leasing and heartbeat updates.
             profile.Status = "leased";
 
             await _db.SaveChangesAsync();
@@ -146,15 +149,6 @@ public class SchedulerService
         if (lockRow is not null)
         {
             lockRow.Status = "released";
-        }
-
-        if (run.AssignedAgentId.HasValue)
-        {
-            var agent = await _db.Agents.FindAsync(run.AssignedAgentId.Value);
-            if (agent is not null && agent.CurrentRuns > 0)
-            {
-                agent.CurrentRuns -= 1;
-            }
         }
 
         var profile = await _db.BrowserProfiles.FindAsync(run.BrowserProfileId);

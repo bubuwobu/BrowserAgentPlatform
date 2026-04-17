@@ -13,6 +13,7 @@ namespace BrowserAgentPlatform.Api.Controllers;
 [Route("api/agents")]
 public class AgentsController : ControllerBase
 {
+    private readonly ILogger<AgentsController> _logger;
     private readonly AppDbContext _db;
     private readonly SchedulerService _scheduler;
     private readonly ArtifactService _artifactService;
@@ -23,6 +24,7 @@ public class AgentsController : ControllerBase
     private readonly ProfileLifecycleService _profileLifecycleService;
 
     public AgentsController(
+        ILogger<AgentsController> logger,
         AppDbContext db,
         SchedulerService scheduler,
         ArtifactService artifactService,
@@ -32,6 +34,7 @@ public class AgentsController : ControllerBase
         AuditService auditService,
         ProfileLifecycleService profileLifecycleService)
     {
+        _logger = logger;
         _db = db;
         _scheduler = scheduler;
         _artifactService = artifactService;
@@ -112,81 +115,93 @@ public class AgentsController : ControllerBase
     {
         var security = _agentRequestSecurityService.Validate(HttpContext.Request, agentKey);
         if (!security.ok) return Unauthorized(new { ok = false, message = security.reason });
-
-        var result = await _scheduler.LeaseNextRunForAgentAsync(agentKey);
-        if (result is null) return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
-
-        var profile = await _db.BrowserProfiles.FindAsync(result.Value.run.BrowserProfileId);
-        if (profile is null)
+        try
         {
-            result.Value.run.Status = "failed";
-            result.Value.run.ErrorCode = "missing_profile";
-            result.Value.run.ErrorMessage = "Profile not found during pull.";
-            await _db.SaveChangesAsync();
-            await _scheduler.ReleaseRunAsync(result.Value.run.Id);
-            await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), "{\"reason\":\"missing_profile\"}");
-            return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
-        }
+            var result = await _scheduler.LeaseNextRunForAgentAsync(agentKey);
+            if (result is null) return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
 
-        var check = await _isolationPolicyService.CheckProfileAsync(profile);
-        if (!check.Ok)
-        {
-            result.Value.run.Status = "failed";
-            result.Value.run.ErrorCode = "isolation_validation_failed";
-            result.Value.run.ErrorMessage = string.Join("; ", check.Errors);
-            _db.TaskRunLogs.Add(new TaskRunLog
-            {
-                TaskRunId = result.Value.run.Id,
-                Level = "error",
-                StepId = "isolation_check",
-                Message = result.Value.run.ErrorMessage
-            });
-            await _db.SaveChangesAsync();
-            await _scheduler.ReleaseRunAsync(result.Value.run.Id);
-            await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), $"{{\"reason\":\"isolation_validation_failed\",\"errors\":{JsonSerializer.Serialize(check.Errors)}}}");
-            return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
-        }
-
-        var isolationGate = ParseIsolationGate(result.Value.task.PayloadJson);
-        if (isolationGate.enforce)
-        {
-            var checkedAt = profile.LastIsolationCheckAt;
-            var stale = !checkedAt.HasValue || checkedAt.Value < DateTime.UtcNow.AddMinutes(-isolationGate.requireRecentCheckMinutes);
-            if (stale)
+            var profile = await _db.BrowserProfiles.FindAsync(result.Value.run.BrowserProfileId);
+            if (profile is null)
             {
                 result.Value.run.Status = "failed";
-                result.Value.run.ErrorCode = "isolation_gate_failed";
-                result.Value.run.ErrorMessage = $"Profile isolation check is stale. Require recent check within {isolationGate.requireRecentCheckMinutes} minutes.";
+                result.Value.run.ErrorCode = "missing_profile";
+                result.Value.run.ErrorMessage = "Profile not found during pull.";
+                await _db.SaveChangesAsync();
+                await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+                await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), "{\"reason\":\"missing_profile\"}");
+                return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
+            }
+
+            var check = await _isolationPolicyService.CheckProfileAsync(profile);
+            if (!check.Ok)
+            {
+                result.Value.run.Status = "failed";
+                result.Value.run.ErrorCode = "isolation_validation_failed";
+                result.Value.run.ErrorMessage = string.Join("; ", check.Errors);
                 _db.TaskRunLogs.Add(new TaskRunLog
                 {
                     TaskRunId = result.Value.run.Id,
                     Level = "error",
-                    StepId = "isolation_gate",
-                    Message = result.Value.run.ErrorMessage
+                    StepId = "isolation_check",
+                    Message = result.Value.run.ErrorMessage ?? "isolation check failed"
                 });
                 await _db.SaveChangesAsync();
                 await _scheduler.ReleaseRunAsync(result.Value.run.Id);
-                await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), $"{{\"reason\":\"isolation_gate_failed\",\"requireRecentCheckMinutes\":{isolationGate.requireRecentCheckMinutes}}}");
+                await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), $"{{\"reason\":\"isolation_validation_failed\",\"errors\":{JsonSerializer.Serialize(check.Errors)}}}");
                 return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
             }
+
+            var isolationGate = ParseIsolationGate(result.Value.task.PayloadJson);
+            if (isolationGate.enforce)
+            {
+                var checkedAt = profile.LastIsolationCheckAt;
+                var stale = !checkedAt.HasValue || checkedAt.Value < DateTime.UtcNow.AddMinutes(-isolationGate.requireRecentCheckMinutes);
+                if (stale)
+                {
+                    result.Value.run.Status = "failed";
+                    result.Value.run.ErrorCode = "isolation_gate_failed";
+                    result.Value.run.ErrorMessage = $"Profile isolation check is stale. Require recent check within {isolationGate.requireRecentCheckMinutes} minutes.";
+                    _db.TaskRunLogs.Add(new TaskRunLog
+                    {
+                        TaskRunId = result.Value.run.Id,
+                        Level = "error",
+                        StepId = "isolation_gate",
+                        Message = result.Value.run.ErrorMessage ?? "isolation gate failed"
+                    });
+                    await _db.SaveChangesAsync();
+                    await _scheduler.ReleaseRunAsync(result.Value.run.Id);
+                    await _auditService.WriteAsync("run_pull_rejected", "agent", agentKey, "task_run", result.Value.run.Id.ToString(), $"{{\"reason\":\"isolation_gate_failed\",\"requireRecentCheckMinutes\":{isolationGate.requireRecentCheckMinutes}}}");
+                    return Ok(new AgentPullResponse(null, null, null, null, null, null, null, null));
+                }
+            }
+
+            profile.LastIsolationCheckAt = DateTime.UtcNow;
+            profile.RuntimeMetaJson = check.EffectivePolicyJson;
+            await _db.SaveChangesAsync();
+            await _profileLifecycleService.MarkLeasedAsync(result.Value.run.BrowserProfileId, result.Value.run.Id, result.Value.run.TaskId, result.Value.profileLock.LeaseToken);
+            await _auditService.WriteAsync("run_pulled", "agent", agentKey, "task_run", result.Value.run.Id.ToString());
+
+            return Ok(new AgentPullResponse(
+                result.Value.run.Id,
+                result.Value.run.TaskId,
+                result.Value.run.BrowserProfileId,
+                result.Value.profileLock.LeaseToken,
+                result.Value.task.PayloadJson,
+                result.Value.task.TimeoutSeconds,
+                result.Value.task.RetryPolicyJson,
+                check.EffectivePolicyJson
+            ));
         }
-
-        profile.LastIsolationCheckAt = DateTime.UtcNow;
-        profile.RuntimeMetaJson = check.EffectivePolicyJson;
-        await _db.SaveChangesAsync();
-        await _profileLifecycleService.MarkLeasedAsync(result.Value.run.BrowserProfileId, result.Value.run.Id, result.Value.run.TaskId, result.Value.profileLock.LeaseToken);
-        await _auditService.WriteAsync("run_pulled", "agent", agentKey, "task_run", result.Value.run.Id.ToString());
-
-        return Ok(new AgentPullResponse(
-            result.Value.run.Id,
-            result.Value.run.TaskId,
-            result.Value.run.BrowserProfileId,
-            result.Value.profileLock.LeaseToken,
-            result.Value.task.PayloadJson,
-            result.Value.task.TimeoutSeconds,
-            result.Value.task.RetryPolicyJson,
-            check.EffectivePolicyJson
-        ));
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Pull failed for agent {AgentKey}.", agentKey);
+            return StatusCode(500, new
+            {
+                ok = false,
+                error = "pull_failed",
+                message = ex.Message
+            });
+        }
     }
 
     [AllowAnonymous]
