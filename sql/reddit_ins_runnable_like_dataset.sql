@@ -1,6 +1,7 @@
 -- Runnable Reddit + Instagram browse-like dataset for existing schema.
 -- This script is designed for an existing DB (tables already created).
 -- It rebuilds only like-related data and queues runs immediately.
+-- Strong single-agent binding: all seeded tasks are pinned to one agent key.
 -- Usage:
 --   mysql -u<user> -p<password> <database_name> < sql/reddit_ins_runnable_like_dataset.sql
 
@@ -8,20 +9,25 @@ SET NAMES utf8mb4;
 START TRANSACTION;
 
 -- 0) Pick runtime anchors
-SET @agent_id := COALESCE(
-  (SELECT id FROM agents WHERE agent_key = 'agent-local-001' ORDER BY id LIMIT 1),
-  (SELECT id FROM agents ORDER BY id LIMIT 1)
-);
+SET @target_agent_key := 'agent-local-001';
+SET @agent_id := (SELECT id FROM agents WHERE agent_key = @target_agent_key ORDER BY id LIMIT 1);
 SET @reddit_profile_id := (SELECT id FROM browser_profiles ORDER BY id LIMIT 1);
 SET @instagram_profile_id := (SELECT id FROM browser_profiles WHERE id <> @reddit_profile_id ORDER BY id LIMIT 1);
 SET @instagram_profile_id := COALESCE(@instagram_profile_id, @reddit_profile_id);
 
--- 1) Normalize selected agent (helps scheduler state)
+-- 1) Ensure selected agent exists (for strict binding)
+INSERT INTO agents (`agent_key`, `name`, `machine_name`, `status`, `max_parallel_runs`, `current_runs`, `scheduler_tags`, `last_heartbeat_at`, `created_at`)
+SELECT @target_agent_key, 'Local Agent', 'LOCAL-MACHINE', 'online', 2, 0, 'default', NOW(), NOW()
+WHERE @agent_id IS NULL;
+
+SET @agent_id := COALESCE(@agent_id, NULLIF(LAST_INSERT_ID(), 0));
+
+-- 2) Normalize selected agent (helps scheduler state)
 UPDATE agents
 SET status = 'online', current_runs = 0, last_heartbeat_at = NOW()
 WHERE id = @agent_id;
 
--- 2) Remove old like-related runs/tasks/templates/accounts only
+-- 3) Remove old like-related runs/tasks/templates/accounts only
 DELETE r FROM task_runs r
 JOIN tasks t ON t.id = r.task_id
 WHERE t.name IN (
@@ -47,7 +53,7 @@ DELETE FROM task_templates WHERE name IN (
 
 DELETE FROM accounts WHERE platform IN ('reddit', 'instagram') AND username IN ('reddit_main', 'instagram_main');
 
--- 3) Accounts
+-- 4) Accounts
 INSERT INTO accounts (`name`, `platform`, `username`, `status`, `browser_profile_id`, `credential_json`, `metadata_json`, `created_at`) VALUES
 ('Reddit Main Account','reddit','reddit_main','active',@reddit_profile_id,'{"mode":"cookie_bootstrap"}','{"site":"https://www.reddit.com","note":"replace <replace-reddit_session>"}',NOW()),
 ('Instagram Main Account','instagram','instagram_main','active',@instagram_profile_id,'{"mode":"cookie_bootstrap"}','{"site":"https://www.instagram.com/","note":"replace <replace-instagram_sessionid>"}',NOW());
@@ -55,7 +61,7 @@ INSERT INTO accounts (`name`, `platform`, `username`, `status`, `browser_profile
 SET @reddit_account_id := (SELECT id FROM accounts WHERE platform='reddit' AND username='reddit_main' ORDER BY id DESC LIMIT 1);
 SET @instagram_account_id := (SELECT id FROM accounts WHERE platform='instagram' AND username='instagram_main' ORDER BY id DESC LIMIT 1);
 
--- 4) Templates
+-- 5) Templates
 INSERT INTO task_templates (`name`,`definition_json`,`created_at`) VALUES
 (
   'Reddit Cookie Bootstrap Template',
@@ -83,28 +89,28 @@ SET @tpl_instagram_cookie := (SELECT id FROM task_templates WHERE name='Instagra
 SET @tpl_reddit_night := (SELECT id FROM task_templates WHERE name='Reddit Night Random Like 1H Template' ORDER BY id DESC LIMIT 1);
 SET @tpl_instagram_night := (SELECT id FROM task_templates WHERE name='Instagram Night Random Like 1H Template' ORDER BY id DESC LIMIT 1);
 
--- 5) Tasks: use least_loaded + preferred_agent to avoid profile owner mismatch
+-- 6) Tasks: strong bind to one agent key
 INSERT INTO tasks (
   `name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`
 ) VALUES
 (
-  'Reddit Cookie Bootstrap Task', @reddit_profile_id, 'least_loaded', @agent_id, 'queued',
+  'Reddit Cookie Bootstrap Task', @reddit_profile_id, 'preferred_agent', @agent_id, 'queued',
   (SELECT definition_json FROM task_templates WHERE id=@tpl_reddit_cookie), '{"maxRetries":1}', 120, 300, NOW(), @reddit_account_id, 1, 'manual', '{}', NULL, NULL
 ),
 (
-  'Instagram Cookie Bootstrap Task', @instagram_profile_id, 'least_loaded', @agent_id, 'queued',
+  'Instagram Cookie Bootstrap Task', @instagram_profile_id, 'preferred_agent', @agent_id, 'queued',
   (SELECT definition_json FROM task_templates WHERE id=@tpl_instagram_cookie), '{"maxRetries":1}', 120, 300, NOW(), @instagram_account_id, 1, 'manual', '{}', NULL, NULL
 ),
 (
-  'Reddit Night Random Like 1H Task', @reddit_profile_id, 'least_loaded', @agent_id, 'queued',
+  'Reddit Night Random Like 1H Task', @reddit_profile_id, 'preferred_agent', @agent_id, 'queued',
   (SELECT definition_json FROM task_templates WHERE id=@tpl_reddit_night), '{"maxRetries":1}', 90, 5400, NOW(), @reddit_account_id, 1, 'manual', '{}', NULL, NULL
 ),
 (
-  'Instagram Night Random Like 1H Task', @instagram_profile_id, 'least_loaded', @agent_id, 'queued',
+  'Instagram Night Random Like 1H Task', @instagram_profile_id, 'preferred_agent', @agent_id, 'queued',
   (SELECT definition_json FROM task_templates WHERE id=@tpl_instagram_night), '{"maxRetries":1}', 90, 5400, NOW(), @instagram_account_id, 1, 'manual', '{}', NULL, NULL
 );
 
--- 6) Queue runs now
+-- 7) Queue runs now
 INSERT INTO task_runs (`task_id`,`browser_profile_id`,`status`,`retry_count`,`max_retries`,`current_step_id`,`current_step_label`,`current_url`,`result_json`,`error_code`,`error_message`,`last_preview_path`,`created_at`,`started_at`,`heartbeat_at`,`finished_at`)
 SELECT
   t.id,
@@ -133,7 +139,8 @@ WHERE t.name IN (
 
 COMMIT;
 
--- 7) Verify
+-- 8) Verify
 SELECT id, agent_key, status, last_heartbeat_at FROM agents WHERE id = @agent_id;
+SELECT @target_agent_key AS target_agent_key, @agent_id AS target_agent_id;
 SELECT id, name, scheduling_strategy, preferred_agent_id, status FROM tasks ORDER BY id DESC LIMIT 10;
 SELECT id, task_id, status, created_at FROM task_runs ORDER BY id DESC LIMIT 20;
