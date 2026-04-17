@@ -10,6 +10,7 @@
 - `../../sql/reddit_ins_like_only_reset_seed.sql`：一键重置为“仅 Reddit+Instagram 点赞联调”最小数据集（固定入口 + random_like）。
   - 已内置 queued `task_runs`，导入后应自动执行；若无反应，优先检查 agent 心跳与在线状态。
 - `../../sql/reddit_ins_post_import_self_check.sql`：导入后立即自检清单（心跳 / 任务 / 运行状态 / 失败信息一键查询）。
+- `../../sql/reddit_ins_like_quick_repair.sql`：当自检显示“目标任务/运行记录为空”时，非破坏性回填点赞联调模板+任务并立即入队。
 - `../../sql/reddit_ins_seed_validate.sql`：排查“启动后没反应”的就绪状态。
 - `../../sql/reddit_ins_kickoff.sql`：强制把关键任务入队（bootstrap 优先）。
 
