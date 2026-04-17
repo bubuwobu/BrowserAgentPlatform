@@ -8,10 +8,12 @@ namespace BrowserAgentPlatform.Api.Services;
 public class SchedulerService
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<SchedulerService> _logger;
 
-    public SchedulerService(AppDbContext db)
+    public SchedulerService(AppDbContext db, ILogger<SchedulerService> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     public async Task<(TaskRun run, BrowserProfileLock profileLock, WorkflowTask task)?> LeaseNextRunForAgentAsync(string agentKey)
@@ -104,13 +106,25 @@ public class SchedulerService
             run.AssignedAgentId = agent.Id;
             run.HeartbeatAt = DateTime.UtcNow;
 
-            agent.CurrentRuns += 1;
+            // NOTE:
+            // We intentionally avoid updating agents.current_runs here.
+            // Heartbeat endpoint is the single writer for that field, which prevents
+            // lock contention/timeouts between pull leasing and heartbeat updates.
             profile.Status = "leased";
 
-            await _db.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return (run, lockRow, task);
+            try
+            {
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                return (run, lockRow, task);
+            }
+            catch (DbUpdateException ex)
+            {
+                await tx.RollbackAsync();
+                _logger.LogWarning(ex, "Lease conflict/timeout while assigning run {RunId} to agent {AgentId}, skip and continue.", run.Id, agent.Id);
+                _db.ChangeTracker.Clear();
+                continue;
+            }
         }
 
         return null;
@@ -146,15 +160,6 @@ public class SchedulerService
         if (lockRow is not null)
         {
             lockRow.Status = "released";
-        }
-
-        if (run.AssignedAgentId.HasValue)
-        {
-            var agent = await _db.Agents.FindAsync(run.AssignedAgentId.Value);
-            if (agent is not null && agent.CurrentRuns > 0)
-            {
-                agent.CurrentRuns -= 1;
-            }
         }
 
         var profile = await _db.BrowserProfiles.FindAsync(run.BrowserProfileId);
