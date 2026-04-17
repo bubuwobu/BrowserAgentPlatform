@@ -35,6 +35,12 @@ dotnet run --project SocialAuto.Instagram.Console/SocialAuto.Instagram.Console.c
 dotnet run --project SocialAuto.Instagram.Console/SocialAuto.Instagram.Console.csproj -- ./SocialAuto.Instagram.Console/appsettings.json
 ```
 
+程序会自动按以下顺序查找配置：  
+1) 命令行参数指定路径；  
+2) 输出目录 `appsettings.json`；  
+3) 当前目录 `appsettings.json`；  
+4) `SocialAuto.Reddit.Console/appsettings.json` 或 `SocialAuto.Instagram.Console/appsettings.json`。
+
 ## 说明
 
 - 目前按你的需求：单账号、简单可跑优先。

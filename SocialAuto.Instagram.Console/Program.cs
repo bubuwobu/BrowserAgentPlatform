@@ -1,17 +1,7 @@
 using System.Text.Json;
 using Microsoft.Playwright;
 
-var configPath = args.Length > 0 ? args[0] : Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-if (!File.Exists(configPath))
-{
-    Console.WriteLine($"[ERR] Config not found: {configPath}");
-    return;
-}
-
-var config = JsonSerializer.Deserialize<InstagramBotConfig>(await File.ReadAllTextAsync(configPath), new JsonSerializerOptions
-{
-    PropertyNameCaseInsensitive = true
-}) ?? new InstagramBotConfig();
+var config = await LoadConfigAsync(args);
 
 var random = new Random();
 var endAt = DateTime.UtcNow.AddMinutes(config.RunMinutes);
@@ -60,6 +50,32 @@ while (DateTime.UtcNow < endAt)
 }
 
 Console.WriteLine("[DONE] Instagram bot completed.");
+
+static async Task<InstagramBotConfig> LoadConfigAsync(string[] args)
+{
+    var candidates = new List<string>();
+    if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+    {
+        candidates.Add(args[0]);
+    }
+
+    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
+    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
+    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Instagram.Console", "appsettings.json"));
+
+    var configPath = candidates.FirstOrDefault(File.Exists);
+    if (string.IsNullOrWhiteSpace(configPath))
+    {
+        Console.WriteLine("[WARN] appsettings.json not found, using built-in defaults.");
+        return new InstagramBotConfig();
+    }
+
+    Console.WriteLine($"[BOOT] Using config: {configPath}");
+    return JsonSerializer.Deserialize<InstagramBotConfig>(
+               await File.ReadAllTextAsync(configPath),
+               new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+           ) ?? new InstagramBotConfig();
+}
 
 static bool ShouldAct(double probability, Random random)
 {
