@@ -7,6 +7,7 @@
 - `../../sql/instagram_automation_seed.sql`：向现有库增量写入 Instagram 账号、模板和可运行任务。
 - `../../sql/instagram_set_session.sql`：一键把 `sessionid` 写入 Instagram 模板与任务。
 - `../../sql/reddit_ins_full_flow_seed.sql`：一条 SQL 同时重建 Reddit + Instagram 两平台的模板和任务。
+- `../../sql/reddit_ins_like_only_reset_seed.sql`：一键重置为“仅 Reddit+Instagram 点赞联调”最小数据集（固定入口 + random_like）。
 - `../../sql/reddit_ins_seed_validate.sql`：排查“启动后没反应”的就绪状态。
 - `../../sql/reddit_ins_kickoff.sql`：强制把关键任务入队（bootstrap 优先）。
 
