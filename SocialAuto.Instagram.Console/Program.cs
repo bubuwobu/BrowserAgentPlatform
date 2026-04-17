@@ -23,7 +23,7 @@ await using var context = await playwright.Chromium.LaunchPersistentContextAsync
 );
 
 var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
-await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
+await BootstrapLoginAsync(context, page, config);
 
 var cycle = 0;
 while (DateTime.UtcNow < endAt)
@@ -50,6 +50,10 @@ while (DateTime.UtcNow < endAt)
 }
 
 Console.WriteLine("[DONE] Instagram bot completed.");
+if (config.Login.ExportCookiesOnExit)
+{
+    await SaveCookiesAsync(context, config.Login.ExportCookieFilePath);
+}
 
 static async Task<InstagramBotConfig> LoadConfigAsync(string[] args)
 {
@@ -110,6 +114,97 @@ static async Task TryRandomClickAsync(IPage page, List<string> selectors, string
     Console.WriteLine($"[{label}] no target clicked.");
 }
 
+static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, InstagramBotConfig config)
+{
+    if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
+    {
+        var cookiePath = config.Login.CookieFilePath;
+        if (File.Exists(cookiePath))
+        {
+            var cookies = await LoadCookiesAsync(cookiePath);
+            if (cookies.Count > 0)
+            {
+                await context.AddCookiesAsync(cookies);
+                Console.WriteLine($"[LOGIN] Loaded cookies: {cookies.Count} from {cookiePath}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"[LOGIN] Cookie file not found: {cookiePath}, fallback to manual page open.");
+        }
+    }
+
+    await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
+
+    if (config.Login.WaitForManualConfirm)
+    {
+        Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
+        Console.ReadLine();
+    }
+}
+
+static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
+{
+    var text = await File.ReadAllTextAsync(cookiePath);
+    using var doc = JsonDocument.Parse(text);
+    var root = doc.RootElement;
+    var source = root.ValueKind == JsonValueKind.Array
+        ? root
+        : (root.TryGetProperty("cookies", out var cookiesEl) ? cookiesEl : default);
+
+    var result = new List<Cookie>();
+    if (source.ValueKind != JsonValueKind.Array) return result;
+
+    foreach (var item in source.EnumerateArray())
+    {
+        if (!item.TryGetProperty("name", out var nameEl) || !item.TryGetProperty("value", out var valueEl))
+            continue;
+
+        var cookie = new Cookie
+        {
+            Name = nameEl.GetString() ?? "",
+            Value = valueEl.GetString() ?? "",
+            Url = item.TryGetProperty("url", out var urlEl) ? urlEl.GetString() : null,
+            Domain = item.TryGetProperty("domain", out var domainEl) ? domainEl.GetString() : null,
+            Path = item.TryGetProperty("path", out var pathEl) ? pathEl.GetString() : "/",
+            Expires = item.TryGetProperty("expires", out var expEl) && expEl.TryGetDouble(out var exp) ? exp : null,
+            HttpOnly = item.TryGetProperty("httpOnly", out var httpOnlyEl) && httpOnlyEl.GetBoolean(),
+            Secure = item.TryGetProperty("secure", out var secureEl) && secureEl.GetBoolean(),
+            SameSite = item.TryGetProperty("sameSite", out var sameSiteEl) ? ParseSameSite(sameSiteEl.GetString()) : null
+        };
+
+        if (string.IsNullOrWhiteSpace(cookie.Url) && string.IsNullOrWhiteSpace(cookie.Domain))
+        {
+            cookie.Url = "https://www.instagram.com";
+        }
+
+        result.Add(cookie);
+    }
+
+    return result;
+}
+
+static SameSiteAttribute? ParseSameSite(string? raw)
+{
+    if (string.IsNullOrWhiteSpace(raw)) return null;
+    return raw.ToLowerInvariant() switch
+    {
+        "lax" => SameSiteAttribute.Lax,
+        "strict" => SameSiteAttribute.Strict,
+        "none" => SameSiteAttribute.None,
+        _ => null
+    };
+}
+
+static async Task SaveCookiesAsync(IBrowserContext context, string path)
+{
+    var cookies = await context.CookiesAsync();
+    var dir = Path.GetDirectoryName(path);
+    if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+    await File.WriteAllTextAsync(path, JsonSerializer.Serialize(new { cookies }, new JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine($"[LOGIN] Cookies exported: {path}");
+}
+
 static async Task TryCommentAsync(IPage page, InstagramBotConfig config, Random random)
 {
     try
@@ -159,6 +254,7 @@ public class InstagramBotConfig
     public int MinWaitMs { get; set; } = 25000;
     public int MaxWaitMs { get; set; } = 60000;
     public IsolationOptions Isolation { get; set; } = new();
+    public LoginOptions Login { get; set; } = new();
     public ScrollOptions Scroll { get; set; } = new();
     public InstagramSelectors Selectors { get; set; } = new();
     public List<string> CommentTemplates { get; set; } =
@@ -167,6 +263,16 @@ public class InstagramBotConfig
         "Great shot 🔥",
         "Really nice content, thanks for posting!"
     ];
+}
+
+public class LoginOptions
+{
+    // manual_once | cookie_bootstrap
+    public string Mode { get; set; } = "manual_once";
+    public string CookieFilePath { get; set; } = "./profiles/instagram/cookies.json";
+    public bool WaitForManualConfirm { get; set; } = true;
+    public bool ExportCookiesOnExit { get; set; } = true;
+    public string ExportCookieFilePath { get; set; } = "./profiles/instagram/cookies.json";
 }
 
 public class IsolationOptions

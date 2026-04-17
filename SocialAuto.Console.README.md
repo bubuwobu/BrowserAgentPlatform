@@ -46,3 +46,18 @@ dotnet run --project SocialAuto.Instagram.Console/SocialAuto.Instagram.Console.c
 - 目前按你的需求：单账号、简单可跑优先。
 - `profileDir` 为持久化浏览器目录：首次可人工登录，后续复用登录态。
 - 评论/点赞选择器依赖平台页面结构，若页面变动需要在配置或代码里微调。
+
+## 默认登录（推荐流程）
+
+### 方案 A：manual_once（首次推荐）
+1. `login.mode = manual_once`
+2. 启动程序后，在弹出的浏览器里手工完成登录
+3. 回到控制台按回车继续跑任务
+4. 程序结束时自动导出 cookies 到 `login.exportCookieFilePath`
+
+### 方案 B：cookie_bootstrap（后续稳定复用）
+1. 把 `login.mode` 改为 `cookie_bootstrap`
+2. 确保 `login.cookieFilePath` 指向上一步导出的 cookies 文件
+3. 启动时程序会自动注入 cookie，再打开目标页面
+
+> 隔离建议（单账号阶段也建议保留）：每个平台用独立 `profileDir`，并保持固定 `isolation` 参数（timezone/locale/UA/viewport）。
