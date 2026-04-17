@@ -8,10 +8,12 @@ namespace BrowserAgentPlatform.Api.Services;
 public class SchedulerService
 {
     private readonly AppDbContext _db;
+    private readonly ILogger<SchedulerService> _logger;
 
-    public SchedulerService(AppDbContext db)
+    public SchedulerService(AppDbContext db, ILogger<SchedulerService> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     public async Task<(TaskRun run, BrowserProfileLock profileLock, WorkflowTask task)?> LeaseNextRunForAgentAsync(string agentKey)
@@ -110,10 +112,19 @@ public class SchedulerService
             // lock contention/timeouts between pull leasing and heartbeat updates.
             profile.Status = "leased";
 
-            await _db.SaveChangesAsync();
-            await tx.CommitAsync();
-
-            return (run, lockRow, task);
+            try
+            {
+                await _db.SaveChangesAsync();
+                await tx.CommitAsync();
+                return (run, lockRow, task);
+            }
+            catch (DbUpdateException ex)
+            {
+                await tx.RollbackAsync();
+                _logger.LogWarning(ex, "Lease conflict/timeout while assigning run {RunId} to agent {AgentId}, skip and continue.", run.Id, agent.Id);
+                _db.ChangeTracker.Clear();
+                continue;
+            }
         }
 
         return null;
