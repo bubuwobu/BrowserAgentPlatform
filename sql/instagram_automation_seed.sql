@@ -88,6 +88,7 @@ VALUES
     { "id": "start_wait", "type": "wait_for_timeout", "data": { "label": "首屏停留", "timeout": 5000 } },
     { "id": "cycle", "type": "loop", "data": { "label": "循环浏览约1小时", "minCount": 70, "maxCount": 90 } },
     { "id": "scroll_feed", "type": "scroll", "data": { "label": "模拟滚动浏览", "mode": "wheel", "times": 1, "minDeltaY": 420, "maxDeltaY": 1150, "minPauseMs": 120, "maxPauseMs": 420 } },
+    { "id": "random_like", "type": "random_like", "data": { "label": "随机点赞（低频）", "chance": 0.22, "selectors": ["article button:has(svg[aria-label=Like])", "button:has(svg[aria-label=Like])"] } },
     { "id": "stay_random", "type": "random_wait", "data": { "label": "每次滚动间隔30-60秒", "minMs": 30000, "maxMs": 60000 } },
     { "id": "done", "type": "end_success", "data": { "label": "完成" } }
   ],
@@ -97,7 +98,8 @@ VALUES
     { "source": "start_wait", "target": "cycle" },
     { "source": "cycle", "sourceHandle": "loop", "target": "scroll_feed" },
     { "source": "cycle", "sourceHandle": "done", "target": "done" },
-    { "source": "scroll_feed", "target": "stay_random" },
+    { "source": "scroll_feed", "target": "random_like" },
+    { "source": "random_like", "target": "stay_random" },
     { "source": "stay_random", "target": "cycle" }
   ]
 }',
