@@ -1,5 +1,7 @@
 -- Reset database and seed ONLY Reddit + Instagram data needed for fixed-route random-like testing.
--- WARNING: this script will remove runtime/business data in related tables.
+-- IMPORTANT:
+--   1) This script clears runtime/business tables, but keeps existing agents/browser_profiles infra when possible.
+--   2) It creates queued task_runs so tasks can start immediately after import.
 -- Usage:
 --   mysql -u<user> -p<password> <database_name> < sql/reddit_ins_like_only_reset_seed.sql
 
@@ -24,34 +26,38 @@ TRUNCATE TABLE device_profiles;
 TRUNCATE TABLE proxy_bindings;
 TRUNCATE TABLE launch_profiles;
 
--- 3) infra (rebuild minimal)
-TRUNCATE TABLE browser_profiles;
-TRUNCATE TABLE agents;
-TRUNCATE TABLE proxies;
-TRUNCATE TABLE fingerprint_templates;
-
 SET FOREIGN_KEY_CHECKS = 1;
 
 START TRANSACTION;
 
--- 4) agent + fingerprint
+-- 3) Ensure there is at least one agent
+SET @agent_id := (SELECT id FROM agents ORDER BY id LIMIT 1);
+
 INSERT INTO agents (`agent_key`, `name`, `machine_name`, `status`, `max_parallel_runs`, `current_runs`, `scheduler_tags`, `last_heartbeat_at`, `created_at`)
-VALUES ('agent-local-001', 'Local Agent', 'LOCAL-MACHINE', 'online', 2, 0, 'default', NOW(), NOW());
-SET @agent_id := LAST_INSERT_ID();
+SELECT 'agent-local-001', 'Local Agent', 'LOCAL-MACHINE', 'online', 2, 0, 'default', NOW(), NOW()
+WHERE @agent_id IS NULL;
+
+SET @agent_id := COALESCE(@agent_id, NULLIF(LAST_INSERT_ID(), 0));
+
+-- 4) Ensure there is at least one fingerprint template
+SET @fp_id := (SELECT id FROM fingerprint_templates ORDER BY id LIMIT 1);
 
 INSERT INTO fingerprint_templates (`name`, `fingerprint_json`, `created_at`)
-VALUES ('Social Browse Fingerprint', '{"browser":"chrome","platform":"windows","locale":"en-US"}', NOW());
-SET @fp_id := LAST_INSERT_ID();
+SELECT 'Social Browse Fingerprint', '{"browser":"chrome","platform":"windows","locale":"en-US"}', NOW()
+WHERE @fp_id IS NULL;
 
--- 5) profiles
+SET @fp_id := COALESCE(@fp_id, NULLIF(LAST_INSERT_ID(), 0));
+
+-- 5) Reuse existing browser profiles first; create missing ones only if needed
+SET @reddit_profile_id := (SELECT id FROM browser_profiles ORDER BY id LIMIT 1);
+SET @instagram_profile_id := (SELECT id FROM browser_profiles WHERE id <> @reddit_profile_id ORDER BY id LIMIT 1);
+
 INSERT INTO browser_profiles (
-  `name`, `owner_agent_id`, `proxy_id`, `fingerprint_template_id`, `status`, `isolation_level`,
-  `local_profile_path`, `storage_root_path`, `download_root_path`, `startup_args_json`,
-  `isolation_policy_json`, `runtime_meta_json`, `workspace_key`, `profile_root_path`,
-  `artifact_root_path`, `temp_root_path`, `lifecycle_state`, `last_used_at`,
-  `last_isolation_check_at`, `last_started_at`, `last_stopped_at`, `last_rebuild_at`, `created_at`
-) VALUES
-(
+  `name`,`owner_agent_id`,`proxy_id`,`fingerprint_template_id`,`status`,`isolation_level`,
+  `local_profile_path`,`storage_root_path`,`download_root_path`,`startup_args_json`,`isolation_policy_json`,`runtime_meta_json`,
+  `workspace_key`,`profile_root_path`,`artifact_root_path`,`temp_root_path`,`lifecycle_state`,`last_used_at`,`last_isolation_check_at`,`last_started_at`,`last_stopped_at`,`last_rebuild_at`,`created_at`
+)
+SELECT
   'REDDIT PROFILE - MAIN', @agent_id, NULL, @fp_id, 'idle', 'standard',
   '/tmp/bap/reddit/profile_main', '/tmp/bap/reddit/storage_main', '/tmp/bap/reddit/download_main',
   '["--window-size=1366,768","--disable-blink-features=AutomationControlled"]',
@@ -59,8 +65,16 @@ INSERT INTO browser_profiles (
   '{}', 'reddit_profile_main', '/tmp/bap/reddit/profile_main',
   'runtime/profiles/reddit_main/artifacts', 'runtime/profiles/reddit_main/temp',
   'ready', NULL, NOW(), NULL, NULL, NULL, NOW()
-),
-(
+WHERE @reddit_profile_id IS NULL;
+
+SET @reddit_profile_id := COALESCE(@reddit_profile_id, NULLIF(LAST_INSERT_ID(), 0));
+
+INSERT INTO browser_profiles (
+  `name`,`owner_agent_id`,`proxy_id`,`fingerprint_template_id`,`status`,`isolation_level`,
+  `local_profile_path`,`storage_root_path`,`download_root_path`,`startup_args_json`,`isolation_policy_json`,`runtime_meta_json`,
+  `workspace_key`,`profile_root_path`,`artifact_root_path`,`temp_root_path`,`lifecycle_state`,`last_used_at`,`last_isolation_check_at`,`last_started_at`,`last_stopped_at`,`last_rebuild_at`,`created_at`
+)
+SELECT
   'INSTAGRAM PROFILE - MAIN', @agent_id, NULL, @fp_id, 'idle', 'standard',
   '/tmp/bap/instagram/profile_main', '/tmp/bap/instagram/storage_main', '/tmp/bap/instagram/download_main',
   '["--window-size=1366,768","--disable-blink-features=AutomationControlled"]',
@@ -68,10 +82,12 @@ INSERT INTO browser_profiles (
   '{}', 'instagram_profile_main', '/tmp/bap/instagram/profile_main',
   'runtime/profiles/instagram_main/artifacts', 'runtime/profiles/instagram_main/temp',
   'ready', NULL, NOW(), NULL, NULL, NULL, NOW()
-);
+WHERE @instagram_profile_id IS NULL;
 
-SET @reddit_profile_id := (SELECT id FROM browser_profiles WHERE name='REDDIT PROFILE - MAIN' ORDER BY id DESC LIMIT 1);
-SET @instagram_profile_id := (SELECT id FROM browser_profiles WHERE name='INSTAGRAM PROFILE - MAIN' ORDER BY id DESC LIMIT 1);
+SET @instagram_profile_id := COALESCE(@instagram_profile_id, NULLIF(LAST_INSERT_ID(), 0));
+
+-- if still missing second profile, fallback to reddit profile (parallelism can still work when extra profile is added later)
+SET @instagram_profile_id := COALESCE(@instagram_profile_id, @reddit_profile_id);
 
 -- 6) accounts
 INSERT INTO accounts (`name`, `platform`, `username`, `status`, `browser_profile_id`, `credential_json`, `metadata_json`, `created_at`) VALUES
@@ -109,7 +125,7 @@ SET @tpl_instagram_cookie := (SELECT id FROM task_templates WHERE name='Instagra
 SET @tpl_reddit_night := (SELECT id FROM task_templates WHERE name='Reddit Night Random Like 1H Template' ORDER BY id DESC LIMIT 1);
 SET @tpl_instagram_night := (SELECT id FROM task_templates WHERE name='Instagram Night Random Like 1H Template' ORDER BY id DESC LIMIT 1);
 
--- 8) tasks
+-- 8) tasks (queued + manual)
 INSERT INTO tasks (
   `name`,`browser_profile_id`,`scheduling_strategy`,`preferred_agent_id`,`status`,`payload_json`,`retry_policy_json`,`priority`,`timeout_seconds`,`created_at`,`account_id`,`is_enabled`,`schedule_type`,`schedule_config_json`,`next_run_at`,`last_run_at`
 ) VALUES
@@ -130,9 +146,17 @@ INSERT INTO tasks (
   (SELECT definition_json FROM task_templates WHERE id=@tpl_instagram_night), '{"maxRetries":1}', 90, 5400, NOW(), @instagram_account_id, 1, 'manual', '{}', NULL, NULL
 );
 
+-- 9) create queued task_runs immediately (avoid waiting on queue scanner)
+INSERT INTO task_runs (`task_id`,`browser_profile_id`,`status`,`retry_count`,`max_retries`,`created_at`)
+SELECT t.id, t.browser_profile_id, 'queued', 0,
+       COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(t.retry_policy_json, '$.maxRetries')) AS UNSIGNED), 0),
+       NOW()
+FROM tasks t;
+
 COMMIT;
 
--- 9) quick verify
-SELECT id, name, platform, username, status FROM accounts ORDER BY id;
+-- 10) quick verify / troubleshoot
+SELECT id, agent_key, status, last_heartbeat_at FROM agents ORDER BY id;
 SELECT id, name, status FROM browser_profiles ORDER BY id;
 SELECT id, name, status, is_enabled, timeout_seconds FROM tasks ORDER BY id;
+SELECT id, task_id, status, created_at FROM task_runs ORDER BY id;
