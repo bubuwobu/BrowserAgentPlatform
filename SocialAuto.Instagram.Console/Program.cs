@@ -167,7 +167,7 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
             Url = item.TryGetProperty("url", out var urlEl) ? urlEl.GetString() : null,
             Domain = item.TryGetProperty("domain", out var domainEl) ? domainEl.GetString() : null,
             Path = item.TryGetProperty("path", out var pathEl) ? pathEl.GetString() : "/",
-            Expires = item.TryGetProperty("expires", out var expEl) && expEl.TryGetDouble(out var exp) ? exp : null,
+            Expires = item.TryGetProperty("expires", out var expEl) && expEl.TryGetDouble(out var exp) ? (float?)exp : null,
             HttpOnly = item.TryGetProperty("httpOnly", out var httpOnlyEl) && httpOnlyEl.GetBoolean(),
             Secure = item.TryGetProperty("secure", out var secureEl) && secureEl.GetBoolean(),
             SameSite = item.TryGetProperty("sameSite", out var sameSiteEl) ? ParseSameSite(sameSiteEl.GetString()) : null
