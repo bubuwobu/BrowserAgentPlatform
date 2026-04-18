@@ -8,7 +8,7 @@ var random = new Random();
 var endAt = DateTime.UtcNow.AddMinutes(config.RunMinutes);
 
 Console.WriteLine($"[BOOT] Reddit bot start. RunMinutes={config.RunMinutes}, BaseUrl={config.BaseUrl}");
-Console.WriteLine($"[BOOT] Isolation reserved: enabled={config.Isolation.Enabled}, fingerprint={config.Isolation.FingerprintPreset}, behavior={config.Isolation.BehaviorPreset}");
+Console.WriteLine($"[BOOT] mode: keyword-first; openPostProb={config.OpenRandomPostProbability}, randomLikeProb={config.LikeProbability}, keywordLikeProb={config.KeywordLikeProbability}");
 
 using var playwright = await Playwright.CreateAsync();
 await using var context = await playwright.Chromium.LaunchPersistentContextAsync(
@@ -23,6 +23,9 @@ await using var context = await playwright.Chromium.LaunchPersistentContextAsync
     }
 );
 
+context.SetDefaultTimeout(12000);
+context.SetDefaultNavigationTimeout(45000);
+
 var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
 await BootstrapLoginAsync(context, page, config);
 
@@ -32,22 +35,54 @@ while (DateTime.UtcNow < endAt)
     cycle++;
     Console.WriteLine($"[CYCLE {cycle}] url={page.Url}");
 
+    await EnsureFeedAsync(page, config);
     await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
     await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
 
-    if (ShouldAct(config.LikeProbability, random))
+    var openedPost = false;
+    if (ShouldAct(config.OpenRandomPostProbability, random))
     {
-        await TryRandomClickAsync(page, config.Selectors.LikeButtons, "LIKE", random);
+        openedPost = await TryRandomClickAsync(page, config.Selectors.PostEntryLinks, "OPEN_POST", random);
+        if (openedPost)
+        {
+            await page.WaitForTimeoutAsync(random.Next(1000, 2200));
+        }
     }
 
-    if (ShouldAct(config.CommentProbability, random))
+    var postText = await ReadPostTextAsync(page, config.Selectors.PostTextSelectors);
+    var matchedRule = MatchKeywordRule(postText, config.KeywordRules);
+
+    if (matchedRule is not null)
     {
-        await TryCommentAsync(page, config, random);
+        Console.WriteLine($"[KEYWORD] matched='{matchedRule.Keyword}'");
+    }
+
+    var shouldLike = matchedRule is not null
+        ? ShouldAct(config.KeywordLikeProbability, random)
+        : ShouldAct(config.LikeProbability, random);
+
+    if (shouldLike)
+    {
+        await TryRandomClickAsync(page, config.Selectors.LikeButtons, matchedRule is null ? "LIKE_RANDOM" : "LIKE_KEYWORD", random);
+    }
+
+    var shouldComment = matchedRule is not null
+        ? ShouldAct(config.KeywordCommentProbability, random)
+        : ShouldAct(config.CommentProbability, random);
+
+    if (shouldComment)
+    {
+        await TryCommentAsync(page, config, random, matchedRule, postText);
     }
 
     var waitMs = random.Next(config.MinWaitMs, config.MaxWaitMs + 1);
     Console.WriteLine($"[CYCLE {cycle}] wait={waitMs}ms");
     await page.WaitForTimeoutAsync(waitMs);
+
+    if (openedPost && ShouldAct(0.65, random))
+    {
+        await EnsureFeedAsync(page, config);
+    }
 }
 
 Console.WriteLine("[DONE] Reddit bot completed.");
@@ -103,7 +138,7 @@ static bool ShouldAct(double probability, Random random)
     return random.NextDouble() <= normalized;
 }
 
-static async Task TryRandomClickAsync(IPage page, List<string> selectors, string label, Random random)
+static async Task<bool> TryRandomClickAsync(IPage page, List<string> selectors, string label, Random random)
 {
     foreach (var selector in selectors)
     {
@@ -112,14 +147,18 @@ static async Task TryRandomClickAsync(IPage page, List<string> selectors, string
             var locator = page.Locator(selector);
             var count = await locator.CountAsync();
             if (count == 0) continue;
-            var index = random.Next(0, count);
-            var target = locator.Nth(index);
-            if (!await target.IsVisibleAsync()) continue;
-            await target.ScrollIntoViewIfNeededAsync();
-            await page.WaitForTimeoutAsync(random.Next(200, 700));
-            await target.ClickAsync(new LocatorClickOptions { Delay = random.Next(30, 140) });
-            Console.WriteLine($"[{label}] clicked selector={selector}, index={index}");
-            return;
+
+            var shuffled = Enumerable.Range(0, count).OrderBy(_ => random.Next()).ToList();
+            foreach (var index in shuffled)
+            {
+                var target = locator.Nth(index);
+                if (!await target.IsVisibleAsync()) continue;
+                await target.ScrollIntoViewIfNeededAsync();
+                await page.WaitForTimeoutAsync(random.Next(180, 600));
+                await target.ClickAsync(new LocatorClickOptions { Delay = random.Next(35, 140) });
+                Console.WriteLine($"[{label}] clicked selector={selector}, index={index}");
+                return true;
+            }
         }
         catch (Exception ex)
         {
@@ -128,6 +167,25 @@ static async Task TryRandomClickAsync(IPage page, List<string> selectors, string
     }
 
     Console.WriteLine($"[{label}] no target clicked.");
+    return false;
+}
+
+static async Task EnsureFeedAsync(IPage page, RedditBotConfig config)
+{
+    try
+    {
+        if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 45000 });
+        Console.WriteLine("[NAV] returned to feed page.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[NAV] failed to return feed: {ex.Message}");
+    }
 }
 
 static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, RedditBotConfig config)
@@ -151,13 +209,30 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
         }
     }
 
-    await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
+    await GoWithRetryAsync(page, config.BaseUrl);
     await ReportLoginStateAsync(page);
 
     if (config.Login.WaitForManualConfirm)
     {
         Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
         Console.ReadLine();
+    }
+}
+
+static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
+{
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
+            return;
+        }
+        catch when (attempt < maxAttempts)
+        {
+            await page.WaitForTimeoutAsync(900 * attempt);
+            Console.WriteLine($"[NAV] retry {attempt}/{maxAttempts} for {url}");
+        }
     }
 }
 
@@ -229,7 +304,6 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
         }
 
         NormalizeRedditCookie(cookie);
-
         result.Add(cookie);
     }
 
@@ -238,8 +312,6 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
 
 static void NormalizeRedditCookie(Cookie cookie)
 {
-    // reddit sometimes jumps between reddit.com / www.reddit.com.
-    // Host-only cookies bound to www may not be sent to apex domain.
     if (!string.IsNullOrWhiteSpace(cookie.Domain))
     {
         return;
@@ -281,14 +353,61 @@ static async Task SaveCookiesAsync(IBrowserContext context, string path)
     Console.WriteLine($"[LOGIN] Cookies exported: {path}");
 }
 
-static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random)
+static async Task<string> ReadPostTextAsync(IPage page, List<string> textSelectors)
+{
+    foreach (var selector in textSelectors)
+    {
+        try
+        {
+            var nodes = page.Locator(selector);
+            var count = await nodes.CountAsync();
+            for (var i = 0; i < count; i++)
+            {
+                var txt = (await nodes.Nth(i).InnerTextAsync()).Trim();
+                if (!string.IsNullOrWhiteSpace(txt))
+                {
+                    return txt;
+                }
+            }
+        }
+        catch
+        {
+            // ignore selector-level failures
+        }
+    }
+
+    return string.Empty;
+}
+
+static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
+{
+    if (string.IsNullOrWhiteSpace(postText) || rules.Count == 0)
+    {
+        return null;
+    }
+
+    foreach (var rule in rules)
+    {
+        if (!string.IsNullOrWhiteSpace(rule.Keyword) && postText.Contains(rule.Keyword, StringComparison.OrdinalIgnoreCase))
+        {
+            return rule;
+        }
+    }
+
+    return null;
+}
+
+static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
     try
     {
-        await TryRandomClickAsync(page, config.Selectors.PostEntryLinks, "OPEN_POST", random);
-        await page.WaitForTimeoutAsync(random.Next(1200, 2500));
+        if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
+        {
+            await TryRandomClickAsync(page, config.Selectors.PostEntryLinks, "OPEN_POST", random);
+            await page.WaitForTimeoutAsync(random.Next(900, 1800));
+        }
 
-        var commentText = config.CommentTemplates[random.Next(0, config.CommentTemplates.Count)];
+        var commentText = GenerateAiStyleComment(config, matchedRule, random, postText);
 
         foreach (var inputSelector in config.Selectors.CommentInputs)
         {
@@ -306,7 +425,7 @@ static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random ran
                 if (await submit.CountAsync() == 0) continue;
                 if (!await submit.IsVisibleAsync()) continue;
                 await submit.ClickAsync();
-                Console.WriteLine($"[COMMENT] submitted.");
+                Console.WriteLine("[COMMENT] submitted.");
                 return;
             }
         }
@@ -319,26 +438,67 @@ static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random ran
     }
 }
 
+static string GenerateAiStyleComment(RedditBotConfig config, KeywordRule? matchedRule, Random random, string postText)
+{
+    var starters = new[] { "Nice one", "Love this", "Great share", "Interesting take" };
+    var closers = new[] { "thanks for posting.", "this was helpful.", "keep it coming!", "learned something new." };
+
+    if (matchedRule is not null && matchedRule.CommentTemplates.Count > 0)
+    {
+        return matchedRule.CommentTemplates[random.Next(matchedRule.CommentTemplates.Count)];
+    }
+
+    if (config.CommentTemplates.Count > 0)
+    {
+        var baseComment = config.CommentTemplates[random.Next(config.CommentTemplates.Count)];
+        if (!string.IsNullOrWhiteSpace(postText))
+        {
+            var trimmed = postText.Length > 28 ? postText[..28] + "..." : postText;
+            return $"{baseComment} ({trimmed})";
+        }
+
+        return baseComment;
+    }
+
+    return $"{starters[random.Next(starters.Length)]}, {closers[random.Next(closers.Length)]}";
+}
+
 public class RedditBotConfig
 {
     public string BaseUrl { get; set; } = "https://www.reddit.com/r/popular/";
     public int RunMinutes { get; set; } = 60;
     public bool Headless { get; set; } = false;
     public string ProfileDir { get; set; } = "./profiles/reddit";
-    public double LikeProbability { get; set; } = 0.2;
-    public double CommentProbability { get; set; } = 0.08;
-    public int MinWaitMs { get; set; } = 25000;
-    public int MaxWaitMs { get; set; } = 60000;
+    public double LikeProbability { get; set; } = 0.12;
+    public double KeywordLikeProbability { get; set; } = 0.72;
+    public double CommentProbability { get; set; } = 0.03;
+    public double KeywordCommentProbability { get; set; } = 0.20;
+    public double OpenRandomPostProbability { get; set; } = 0.45;
+    public int MinWaitMs { get; set; } = 9000;
+    public int MaxWaitMs { get; set; } = 22000;
     public IsolationOptions Isolation { get; set; } = new();
     public LoginOptions Login { get; set; } = new();
     public ScrollOptions Scroll { get; set; } = new();
     public RedditSelectors Selectors { get; set; } = new();
+    public List<KeywordRule> KeywordRules { get; set; } =
+    [
+        new() { Keyword = "ai", CommentTemplates = ["AI 角度很有意思，感谢分享！", "这个 AI 讨论点很到位。"] },
+        new() { Keyword = "startup", CommentTemplates = ["创业话题很真实，受教了。", "这个 startup 经验挺实用。"] },
+        new() { Keyword = "python", CommentTemplates = ["Python 这段经验很有帮助。", "代码思路清晰，感谢！"] }
+    ];
+
     public List<string> CommentTemplates { get; set; } =
     [
         "Nice post! Thanks for sharing.",
         "Interesting perspective 👀",
         "This is helpful, appreciate it."
     ];
+}
+
+public class KeywordRule
+{
+    public string Keyword { get; set; } = string.Empty;
+    public List<string> CommentTemplates { get; set; } = [];
 }
 
 public class LoginOptions
@@ -383,6 +543,13 @@ public class RedditSelectors
     [
         "a[data-click-id='comments']",
         "a[href*='/comments/']"
+    ];
+
+    public List<string> PostTextSelectors { get; set; } =
+    [
+        "h1",
+        "[data-test-id='post-content']",
+        "article"
     ];
 
     public List<string> CommentInputs { get; set; } =
