@@ -64,7 +64,7 @@ while (DateTime.UtcNow < endAt)
     if (shouldLike)
     {
         var likeLabel = matchedRule is null ? "LIKE_RANDOM" : "LIKE_KEYWORD";
-        var liked = await TryRandomClickAsync(page, config.Selectors.LikeButtons, likeLabel, random);
+        var liked = await TryLikeAsync(page, config, random, likeLabel);
         if (liked)
         {
             await SaveActionScreenshotAsync(page, config, likeLabel, matchedRule?.Keyword);
@@ -174,6 +174,63 @@ static async Task<bool> TryRandomClickAsync(IPage page, List<string> selectors, 
 
     Console.WriteLine($"[{label}] no target clicked.");
     return false;
+}
+
+static async Task<bool> TryLikeAsync(IPage page, RedditBotConfig config, Random random, string label)
+{
+    await EnsurePostOpenedForLikeAsync(page, config, random);
+
+    foreach (var selector in config.Selectors.LikeButtons)
+    {
+        try
+        {
+            var locator = page.Locator(selector);
+            var count = await locator.CountAsync();
+            if (count == 0) continue;
+
+            for (var i = 0; i < count; i++)
+            {
+                var target = locator.Nth(i);
+                if (!await target.IsVisibleAsync()) continue;
+
+                try
+                {
+                    await target.ScrollIntoViewIfNeededAsync();
+                    await page.WaitForTimeoutAsync(random.Next(100, 250));
+                    await target.ClickAsync(new LocatorClickOptions { Delay = random.Next(40, 120), Timeout = 5000 });
+                    Console.WriteLine($"[{label}] clicked selector={selector}, index={i}");
+                    return true;
+                }
+                catch
+                {
+                    await target.ClickAsync(new LocatorClickOptions { Force = true, Timeout = 5000 });
+                    Console.WriteLine($"[{label}] force-clicked selector={selector}, index={i}");
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[{label}] selector failed: {selector}, err={ex.Message}");
+        }
+    }
+
+    Console.WriteLine($"[{label}] no like target clicked.");
+    return false;
+}
+
+static async Task EnsurePostOpenedForLikeAsync(IPage page, RedditBotConfig config, Random random)
+{
+    if (page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    var opened = await TryRandomClickAsync(page, config.Selectors.PostEntryLinks, "OPEN_POST_FOR_LIKE", random);
+    if (opened)
+    {
+        await page.WaitForTimeoutAsync(random.Next(900, 1800));
+    }
 }
 
 static async Task EnsureFeedAsync(IPage page, RedditBotConfig config)
@@ -322,6 +379,8 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
+
+    return false;
 }
 
 static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
@@ -665,8 +724,11 @@ public class RedditSelectors
 {
     public List<string> LikeButtons { get; set; } =
     [
-        "button[aria-label*=upvote i]",
-        "button[aria-label*=like i]"
+        "button[aria-label*='upvote' i][aria-pressed='false']",
+        "button[id*='upvote-button'][aria-pressed='false']",
+        "shreddit-post button[aria-label*='upvote' i]",
+        "button[aria-label*='upvote' i]",
+        "button[aria-label*='like' i]"
     ];
 
     public List<string> PostEntryLinks { get; set; } =
