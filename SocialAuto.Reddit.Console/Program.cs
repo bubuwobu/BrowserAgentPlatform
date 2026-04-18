@@ -35,6 +35,7 @@ while (DateTime.UtcNow < endAt)
     cycle++;
     Console.WriteLine($"[CYCLE {cycle}] url={page.Url}");
 
+    await EnsureFeedAsync(page, config);
     await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
     await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
 
