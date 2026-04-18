@@ -11,6 +11,29 @@
 3. 低频随机评论。
 4. 预留隔离参数（指纹/行为/时区/UA/视口）配置位。
 
+
+## 最小可跑（中国瓷器关键词）
+
+下面这套已经写进两个项目的 `appsettings.json`，更新后可直接跑：
+
+- 关键词：`中国瓷器`、`青花瓷`、`景德镇`、`汝窑`、`官窑`
+- 互动策略：命中关键词高概率点赞/评论，未命中低概率随机点赞/评论
+- 等待时间：`4~9` 秒（更快观察效果）
+- 运行时长：`30` 分钟
+- 证据截图：点赞和评论提交后自动截图，方便排查
+- 默认入口：
+  - Reddit：`https://www.reddit.com/search/?q=中国瓷器`
+  - Instagram：`https://www.instagram.com/explore/tags/chineseporcelain/`
+
+如需更激进，可把：
+- `keywordLikeProbability` 调到 `0.9`
+- `keywordCommentProbability` 调到 `0.3`
+- `openRandomPostProbability` 调到 `0.65`
+
+截图目录默认值：
+- Reddit: `./artifacts/reddit`
+- Instagram: `./artifacts/instagram`
+
 ## 运行前准备
 
 1. 安装 .NET 8 SDK
