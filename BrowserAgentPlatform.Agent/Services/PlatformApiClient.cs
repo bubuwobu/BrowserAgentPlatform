@@ -67,7 +67,11 @@ public class PlatformApiClient
     {
         using var message = BuildSignedRequest(HttpMethod.Post, $"api/agents/pull/{_options.AgentKey}");
         var response = await _http.SendAsync(message);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"pull failed: {(int)response.StatusCode} {body}");
+        }
         return await response.Content.ReadFromJsonAsync<AgentPullResponse>(_json);
     }
 

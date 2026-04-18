@@ -1,0 +1,12 @@
+{
+  "cookies": [
+    {
+      "name": "sessionid",
+      "value": "35431408170%3AuBN5kdd7SBa677%3A11%3AAYicC0_nALmGuyHwUPT43ASOnFUmPY6m-KS2XkOpow",
+      "url": "https://www.instagram.com",
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ]
+}
