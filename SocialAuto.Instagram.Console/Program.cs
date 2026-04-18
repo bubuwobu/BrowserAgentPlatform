@@ -442,26 +442,28 @@ static string GenerateAiStyleComment(InstagramBotConfig config, KeywordRule? mat
 
 public class InstagramBotConfig
 {
-    public string BaseUrl { get; set; } = "https://www.instagram.com/explore/";
+    public string BaseUrl { get; set; } = "https://www.instagram.com/explore/tags/chineseporcelain/";
     public int RunMinutes { get; set; } = 60;
     public bool Headless { get; set; } = false;
     public string ProfileDir { get; set; } = "./profiles/instagram";
-    public double LikeProbability { get; set; } = 0.12;
-    public double KeywordLikeProbability { get; set; } = 0.68;
-    public double CommentProbability { get; set; } = 0.03;
-    public double KeywordCommentProbability { get; set; } = 0.18;
-    public double OpenRandomPostProbability { get; set; } = 0.42;
-    public int MinWaitMs { get; set; } = 9000;
-    public int MaxWaitMs { get; set; } = 22000;
+    public double LikeProbability { get; set; } = 0.08;
+    public double KeywordLikeProbability { get; set; } = 0.85;
+    public double CommentProbability { get; set; } = 0.01;
+    public double KeywordCommentProbability { get; set; } = 0.25;
+    public double OpenRandomPostProbability { get; set; } = 0.55;
+    public int MinWaitMs { get; set; } = 4000;
+    public int MaxWaitMs { get; set; } = 9000;
     public IsolationOptions Isolation { get; set; } = new();
     public LoginOptions Login { get; set; } = new();
     public ScrollOptions Scroll { get; set; } = new();
     public InstagramSelectors Selectors { get; set; } = new();
     public List<KeywordRule> KeywordRules { get; set; } =
     [
-        new() { Keyword = "ai", CommentTemplates = ["AI 相关内容很有意思 🤖", "这个 AI 点子真的不错！"] },
-        new() { Keyword = "travel", CommentTemplates = ["旅行感太强了，照片很棒 ✈️", "这个地方看起来太治愈了！"] },
-        new() { Keyword = "fitness", CommentTemplates = ["健身氛围拉满 💪", "训练节奏很赞，继续加油！"] }
+        new() { Keyword = "中国瓷器", CommentTemplates = ["中国瓷器的线条和釉感都很高级。", "这件中国瓷器拍得很有氛围。"] },
+        new() { Keyword = "青花瓷", CommentTemplates = ["青花瓷元素太好看了，蓝白配色很绝。", "这组青花瓷内容很有东方美感。"] },
+        new() { Keyword = "景德镇", CommentTemplates = ["景德镇工艺细节很打动人。", "景德镇作品的质感一眼就能看出来。"] },
+        new() { Keyword = "汝窑", CommentTemplates = ["汝窑釉色太温润了，太治愈了。", "这个汝窑风格质感真的很高级。"] },
+        new() { Keyword = "官窑", CommentTemplates = ["官窑风格很经典，审美在线。", "这件官窑器型和比例都很舒服。"] }
     ];
 
     public List<string> CommentTemplates { get; set; } =

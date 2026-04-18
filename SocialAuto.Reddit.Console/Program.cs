@@ -465,26 +465,28 @@ static string GenerateAiStyleComment(RedditBotConfig config, KeywordRule? matche
 
 public class RedditBotConfig
 {
-    public string BaseUrl { get; set; } = "https://www.reddit.com/r/popular/";
+    public string BaseUrl { get; set; } = "https://www.reddit.com/search/?q=%E4%B8%AD%E5%9B%BD%E7%93%B7%E5%99%A8";
     public int RunMinutes { get; set; } = 60;
     public bool Headless { get; set; } = false;
     public string ProfileDir { get; set; } = "./profiles/reddit";
-    public double LikeProbability { get; set; } = 0.12;
-    public double KeywordLikeProbability { get; set; } = 0.72;
-    public double CommentProbability { get; set; } = 0.03;
-    public double KeywordCommentProbability { get; set; } = 0.20;
-    public double OpenRandomPostProbability { get; set; } = 0.45;
-    public int MinWaitMs { get; set; } = 9000;
-    public int MaxWaitMs { get; set; } = 22000;
+    public double LikeProbability { get; set; } = 0.08;
+    public double KeywordLikeProbability { get; set; } = 0.85;
+    public double CommentProbability { get; set; } = 0.01;
+    public double KeywordCommentProbability { get; set; } = 0.25;
+    public double OpenRandomPostProbability { get; set; } = 0.55;
+    public int MinWaitMs { get; set; } = 4000;
+    public int MaxWaitMs { get; set; } = 9000;
     public IsolationOptions Isolation { get; set; } = new();
     public LoginOptions Login { get; set; } = new();
     public ScrollOptions Scroll { get; set; } = new();
     public RedditSelectors Selectors { get; set; } = new();
     public List<KeywordRule> KeywordRules { get; set; } =
     [
-        new() { Keyword = "ai", CommentTemplates = ["AI 角度很有意思，感谢分享！", "这个 AI 讨论点很到位。"] },
-        new() { Keyword = "startup", CommentTemplates = ["创业话题很真实，受教了。", "这个 startup 经验挺实用。"] },
-        new() { Keyword = "python", CommentTemplates = ["Python 这段经验很有帮助。", "代码思路清晰，感谢！"] }
+        new() { Keyword = "中国瓷器", CommentTemplates = ["中国瓷器的纹饰真的太美了。", "这件中国瓷器的细节很有味道。"] },
+        new() { Keyword = "青花瓷", CommentTemplates = ["青花瓷的发色非常漂亮，质感很棒。", "这件青花瓷看起来很有年代感。"] },
+        new() { Keyword = "景德镇", CommentTemplates = ["景德镇工艺果然名不虚传。", "景德镇这类作品细节处理很讲究。"] },
+        new() { Keyword = "汝窑", CommentTemplates = ["汝窑的釉色很温润，太喜欢了。", "这件汝窑风格的作品气质很高级。"] },
+        new() { Keyword = "官窑", CommentTemplates = ["官窑器型和釉面都很耐看。", "官窑风格非常经典，收藏价值高。"] }
     ];
 
     public List<string> CommentTemplates { get; set; } =
