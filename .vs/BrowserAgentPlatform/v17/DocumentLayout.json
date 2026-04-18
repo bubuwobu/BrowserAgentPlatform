@@ -3,6 +3,42 @@
   "WorkspaceRootPath": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.reddit.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|solutionrelative:socialauto.reddit.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.reddit.console\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|solutionrelative:socialauto.reddit.console\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.reddit.console\\default.cookies.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|solutionrelative:socialauto.reddit.console\\default.cookies.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.instagram.console\\default.cookies.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|solutionrelative:socialauto.instagram.console\\default.cookies.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.instagram.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|solutionrelative:socialauto.instagram.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.agent\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.agent\\services\\taskexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\services\\taskexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.api\\services\\runtimeidentityresolverservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\services\\runtimeidentityresolverservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -39,18 +75,6 @@
       "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\controllers\\taskscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.agent\\services\\taskexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\services\\taskexecutor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|solutionrelative:browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.api\\services\\observabilityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11111111-1111-1111-1111-111111111111}|BrowserAgentPlatform.Api\\BrowserAgentPlatform.Api.csproj|solutionrelative:browseragentplatform.api\\services\\observabilityservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -66,63 +90,88 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "RuntimeIdentityResolverService.cs",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
-              "RelativeToolTip": "BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
-              "ViewState": "AgIAAC8AAAAAAAAAAAAkwDoAAAAKAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-29T05:39:05.342Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "WorkspacePathBuilder.cs",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
-              "RelativeToolTip": "BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
-              "ViewState": "AgIAAAcAAAAAAAAAAAA5wCUAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-29T05:35:24.731Z",
+              "DocumentIndex": 3,
+              "Title": "default.cookies.json",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\default.cookies.json",
+              "RelativeDocumentMoniker": "SocialAuto.Instagram.Console\\default.cookies.json",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\default.cookies.json",
+              "RelativeToolTip": "SocialAuto.Instagram.Console\\default.cookies.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-18T05:09:31.921Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "InstanceLifecycleManager.cs",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
-              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAgwA0AAABFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-29T05:35:14.186Z",
+              "Title": "default.cookies.json",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\default.cookies.json",
+              "RelativeDocumentMoniker": "SocialAuto.Reddit.Console\\default.cookies.json",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\default.cookies.json",
+              "RelativeToolTip": "SocialAuto.Reddit.Console\\default.cookies.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAADpAgAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-18T05:09:21.225Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "ProfileRuntimeManager.cs",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
-              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
-              "ViewState": "AgIAADYAAAAAAAAAAAAkwD8AAAAIAAAAAAAAAA==",
+              "DocumentIndex": 4,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\Program.cs",
+              "RelativeDocumentMoniker": "SocialAuto.Instagram.Console\\Program.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\Program.cs",
+              "RelativeToolTip": "SocialAuto.Instagram.Console\\Program.cs",
+              "ViewState": "AgIAAMsAAAAAAAAAAAAkwOAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-29T04:43:53.164Z",
+              "WhenOpened": "2026-04-17T17:18:09.297Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 1,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\appsettings.json",
+              "RelativeDocumentMoniker": "SocialAuto.Reddit.Console\\appsettings.json",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\appsettings.json",
+              "RelativeToolTip": "SocialAuto.Reddit.Console\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-04-17T17:27:57.191Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\Program.cs",
+              "RelativeDocumentMoniker": "SocialAuto.Reddit.Console\\Program.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\Program.cs",
+              "RelativeToolTip": "SocialAuto.Reddit.Console\\Program.cs",
+              "ViewState": "AgIAAIsAAAAAAAAAAAAvwJkAAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-17T17:10:39.392Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Program.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Program.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Program.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAxAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-14T18:29:09.831Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
               "Title": "ElementPickerService.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\ElementPickerService.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\ElementPickerService.cs",
@@ -134,7 +183,92 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\appsettings.json",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\appsettings.json",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\appsettings.json",
+              "RelativeToolTip": "BrowserAgentPlatform.Api\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-03-24T16:55:24.462Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "WorkspacePathBuilder.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Api\\Services\\WorkspacePathBuilder.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAA5wCUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-29T05:35:24.731Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\appsettings.json",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\appsettings.json",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\appsettings.json",
+              "RelativeToolTip": "BrowserAgentPlatform.Agent\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-03-26T01:50:45.364Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "InstanceLifecycleManager.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\InstanceLifecycleManager.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAgwA0AAABFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-29T05:35:14.186Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 8,
+              "Title": "TaskExecutor.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
+              "ViewState": "AgIAAKgBAAAAAAAAAAAuwKgBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-28T01:44:48.518Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "ProfileRuntimeManager.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\ProfileRuntimeManager.cs",
+              "ViewState": "AgIAADYAAAAAAAAAAAAkwD8AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-29T04:43:53.164Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "RuntimeIdentityResolverService.cs",
+              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
+              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
+              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
+              "RelativeToolTip": "BrowserAgentPlatform.Api\\Services\\RuntimeIdentityResolverService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADoAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-29T05:39:05.342Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
               "Title": "TasksController.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\TasksController.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Controllers\\TasksController.cs",
@@ -146,31 +280,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "TaskExecutor.cs",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
-              "RelativeToolTip": "BrowserAgentPlatform.Agent\\Services\\TaskExecutor.cs",
-              "ViewState": "AgIAAKIAAAAAAAAAAAAnwK8AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-28T01:44:48.518Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\appsettings.json",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\appsettings.json",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\appsettings.json",
-              "RelativeToolTip": "BrowserAgentPlatform.Agent\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-03-26T01:50:45.364Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 15,
               "Title": "ProfilesController.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\ProfilesController.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Controllers\\ProfilesController.cs",
@@ -183,7 +293,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 13,
               "Title": "AgentWorker.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Agent\\Services\\AgentWorker.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Agent\\Services\\AgentWorker.cs",
@@ -195,7 +305,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 16,
               "Title": "AppDbContext.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Data\\AppDbContext.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Data\\AppDbContext.cs",
@@ -207,7 +317,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 18,
               "Title": "ObservabilityService.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Services\\ObservabilityService.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Services\\ObservabilityService.cs",
@@ -219,7 +329,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 19,
               "Title": "AgentsController.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\Controllers\\AgentsController.cs",
               "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\Controllers\\AgentsController.cs",
@@ -228,18 +338,6 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-03-25T03:55:07.28Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\appsettings.json",
-              "RelativeDocumentMoniker": "BrowserAgentPlatform.Api\\appsettings.json",
-              "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\BrowserAgentPlatform.Api\\appsettings.json",
-              "RelativeToolTip": "BrowserAgentPlatform.Api\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAlAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-03-24T16:55:24.462Z"
             }
           ]
         }
