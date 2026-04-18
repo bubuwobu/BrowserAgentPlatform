@@ -104,9 +104,9 @@ static async Task<(InstagramBotConfig Config, string ConfigBaseDir)> LoadConfigA
         candidates.Add(args[0]);
     }
 
-    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
-    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
     candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Instagram.Console", "appsettings.json"));
+    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
+    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
 
     var configPath = candidates.FirstOrDefault(File.Exists);
     if (string.IsNullOrWhiteSpace(configPath))
@@ -257,7 +257,7 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Insta
 
     if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
     {
-        var cookiePath = config.Login.CookieFilePath;
+        var cookiePath = ResolveCookiePathWithFallback(config.Login.CookieFilePath);
         if (File.Exists(cookiePath))
         {
             bootstrapCookies = await LoadCookiesAsync(cookiePath);
@@ -286,6 +286,32 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Insta
         Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
         Console.ReadLine();
     }
+}
+
+static string ResolveCookiePathWithFallback(string cookiePath)
+{
+    if (File.Exists(cookiePath))
+    {
+        return cookiePath;
+    }
+
+    var fileName = Path.GetFileName(cookiePath);
+    var fallbackCandidates = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Instagram.Console", fileName),
+        Path.Combine(Directory.GetCurrentDirectory(), fileName)
+    };
+
+    foreach (var candidate in fallbackCandidates)
+    {
+        if (File.Exists(candidate))
+        {
+            Console.WriteLine($"[LOGIN] Cookie path fallback: {candidate}");
+            return candidate;
+        }
+    }
+
+    return cookiePath;
 }
 
 static async Task<bool> StabilizeLoginAsync(
@@ -379,6 +405,25 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
+}
+
+static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
+{
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
+    }
+
+    return false;
 }
 
 static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)

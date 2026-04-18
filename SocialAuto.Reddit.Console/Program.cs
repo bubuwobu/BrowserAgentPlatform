@@ -104,9 +104,9 @@ static async Task<(RedditBotConfig Config, string ConfigBaseDir)> LoadConfigAsyn
         candidates.Add(args[0]);
     }
 
-    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
-    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
     candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", "appsettings.json"));
+    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
+    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
 
     var configPath = candidates.FirstOrDefault(File.Exists);
     if (string.IsNullOrWhiteSpace(configPath))
@@ -257,7 +257,7 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
 
     if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
     {
-        var cookiePath = config.Login.CookieFilePath;
+        var cookiePath = ResolveCookiePathWithFallback(config.Login.CookieFilePath);
         if (File.Exists(cookiePath))
         {
             bootstrapCookies = await LoadCookiesAsync(cookiePath);
@@ -274,7 +274,18 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
         }
     }
 
-    await GoWithRetryAsync(page, config.BaseUrl);
+    var navigated = await GoWithRetryAsync(page, config.BaseUrl);
+    if (!navigated)
+    {
+        foreach (var fallbackUrl in config.FallbackBaseUrls)
+        {
+            if (await GoWithRetryAsync(page, fallbackUrl, 2))
+            {
+                Console.WriteLine($"[NAV] fallback url succeeded: {fallbackUrl}");
+                break;
+            }
+        }
+    }
     var loginOk = await StabilizeLoginAsync(context, page, config, bootstrapCookies);
     if (!loginOk)
     {
@@ -286,6 +297,32 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
         Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
         Console.ReadLine();
     }
+}
+
+static string ResolveCookiePathWithFallback(string cookiePath)
+{
+    if (File.Exists(cookiePath))
+    {
+        return cookiePath;
+    }
+
+    var fileName = Path.GetFileName(cookiePath);
+    var fallbackCandidates = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", fileName),
+        Path.Combine(Directory.GetCurrentDirectory(), fileName)
+    };
+
+    foreach (var candidate in fallbackCandidates)
+    {
+        if (File.Exists(candidate))
+        {
+            Console.WriteLine($"[LOGIN] Cookie path fallback: {candidate}");
+            return candidate;
+        }
+    }
+
+    return cookiePath;
 }
 
 static async Task<bool> StabilizeLoginAsync(
@@ -321,14 +358,14 @@ static async Task<bool> StabilizeLoginAsync(
     return false;
 }
 
-static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
+static async Task<bool> GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
 {
     for (var attempt = 1; attempt <= maxAttempts; attempt++)
     {
         try
         {
-            await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
-            return;
+            await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.Commit, Timeout = 60000 });
+            return true;
         }
         catch when (attempt < maxAttempts)
         {
@@ -336,6 +373,9 @@ static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
             Console.WriteLine($"[NAV] retry {attempt}/{maxAttempts} for {url}");
         }
     }
+
+    Console.WriteLine($"[NAV] failed after {maxAttempts} attempts: {url}");
+    return false;
 }
 
 static async Task<bool> ReportLoginStateAsync(IPage page)
@@ -379,8 +419,6 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
-
-    return false;
 }
 
 static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
@@ -644,6 +682,11 @@ static string GenerateAiStyleComment(RedditBotConfig config, KeywordRule? matche
 public class RedditBotConfig
 {
     public string BaseUrl { get; set; } = "https://www.reddit.com/search/?q=%E4%B8%AD%E5%9B%BD%E7%93%B7%E5%99%A8";
+    public List<string> FallbackBaseUrls { get; set; } =
+    [
+        "https://www.reddit.com/r/popular/",
+        "https://www.reddit.com/"
+    ];
     public int RunMinutes { get; set; } = 60;
     public bool Headless { get; set; } = false;
     public string ProfileDir { get; set; } = "./profiles/reddit";
@@ -725,7 +768,9 @@ public class RedditSelectors
     public List<string> LikeButtons { get; set; } =
     [
         "button[aria-label*='upvote' i][aria-pressed='false']",
+        "button[aria-label*='up vote' i][aria-pressed='false']",
         "button[id*='upvote-button'][aria-pressed='false']",
+        "button[data-testid*='upvote' i]",
         "shreddit-post button[aria-label*='upvote' i]",
         "button[aria-label*='upvote' i]",
         "button[aria-label*='like' i]"
