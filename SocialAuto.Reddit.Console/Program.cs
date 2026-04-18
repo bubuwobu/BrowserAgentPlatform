@@ -379,6 +379,8 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
+
+    return false;
 }
 
 static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
