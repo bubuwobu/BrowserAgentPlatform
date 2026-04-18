@@ -152,7 +152,18 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
     }
 
     await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
-    await ReportLoginStateAsync(page);
+    var state = await ReportLoginStateAsync(page);
+    if (state == LoginState.BlockedBySecurity)
+    {
+        const string oldRedditUrl = "https://old.reddit.com/";
+        Console.WriteLine($"[LOGIN] 检测到 Reddit 网络安全拦截，自动切换到 {oldRedditUrl} 再次尝试。");
+        await page.GotoAsync(oldRedditUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
+        state = await ReportLoginStateAsync(page);
+        if (state != LoginState.LoggedInLikely)
+        {
+            Console.WriteLine("[LOGIN] 仍未通过登录态校验，cookie 很可能失效或被风控拒绝。");
+        }
+    }
 
     if (config.Login.WaitForManualConfirm)
     {
@@ -161,9 +172,16 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
     }
 }
 
-static async Task ReportLoginStateAsync(IPage page)
+static async Task<LoginState> ReportLoginStateAsync(IPage page)
 {
     var url = page.Url;
+    var bodyText = await page.Locator("body").InnerTextAsync();
+    if (bodyText.Contains("blocked by network security", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine($"[LOGIN] 检测到 Reddit 网络安全拦截。url={url}");
+        return LoginState.BlockedBySecurity;
+    }
+
     var loginIndicators = new[]
     {
         "a[href*='/login']",
@@ -186,11 +204,18 @@ static async Task ReportLoginStateAsync(IPage page)
     {
         Console.WriteLine($"[LOGIN] 未检测到登录态，当前页面可能仍需登录。url={url}");
         Console.WriteLine("[LOGIN] 请检查 cookie 是否过期，或是否缺少关键 cookie（例如 reddit_session、csrf_token）。");
+        return LoginState.LoginRequired;
     }
-    else
-    {
-        Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
-    }
+
+    Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
+    return LoginState.LoggedInLikely;
+}
+
+enum LoginState
+{
+    LoggedInLikely,
+    LoginRequired,
+    BlockedBySecurity
 }
 
 static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)

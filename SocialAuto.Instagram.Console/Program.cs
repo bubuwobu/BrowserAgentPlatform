@@ -32,8 +32,7 @@ while (DateTime.UtcNow < endAt)
     cycle++;
     Console.WriteLine($"[CYCLE {cycle}] url={page.Url}");
 
-    await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
-    await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
+    await BrowseStepAsync(page, config, random);
 
     if (ShouldAct(config.LikeProbability, random))
     {
@@ -101,6 +100,35 @@ static bool ShouldAct(double probability, Random random)
 {
     var normalized = Math.Clamp(probability, 0, 1);
     return random.NextDouble() <= normalized;
+}
+
+static async Task BrowseStepAsync(IPage page, InstagramBotConfig config, Random random)
+{
+    var beforeY = await page.EvaluateAsync<int>("() => Math.floor(window.scrollY)");
+
+    await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
+    await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
+
+    var afterY = await page.EvaluateAsync<int>("() => Math.floor(window.scrollY)");
+    if (afterY > beforeY)
+    {
+        Console.WriteLine($"[BROWSE] scrolled by wheel, y={beforeY}->{afterY}");
+        return;
+    }
+
+    await page.Keyboard.PressAsync("PageDown");
+    await page.WaitForTimeoutAsync(random.Next(180, 450));
+    var afterPageDownY = await page.EvaluateAsync<int>("() => Math.floor(window.scrollY)");
+    if (afterPageDownY > beforeY)
+    {
+        Console.WriteLine($"[BROWSE] scrolled by PageDown, y={beforeY}->{afterPageDownY}");
+        return;
+    }
+
+    await page.Keyboard.PressAsync("ArrowDown");
+    await page.WaitForTimeoutAsync(random.Next(120, 260));
+    var afterArrowY = await page.EvaluateAsync<int>("() => Math.floor(window.scrollY)");
+    Console.WriteLine($"[BROWSE] fallback scroll, y={beforeY}->{afterArrowY}");
 }
 
 static async Task TryRandomClickAsync(IPage page, List<string> selectors, string label, Random random)
