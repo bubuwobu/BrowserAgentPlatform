@@ -699,6 +699,20 @@ static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 
 static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
+    if (!config.Evidence.Enabled)
+    {
+        return;
+    }
+
+    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
+        ? config.Evidence.CaptureOnLike
+        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
+
+    if (!shouldCapture)
+    {
+        return;
+    }
+
     try
     {
         if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
