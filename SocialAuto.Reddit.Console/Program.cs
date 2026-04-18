@@ -63,7 +63,12 @@ while (DateTime.UtcNow < endAt)
 
     if (shouldLike)
     {
-        await TryRandomClickAsync(page, config.Selectors.LikeButtons, matchedRule is null ? "LIKE_RANDOM" : "LIKE_KEYWORD", random);
+        var likeLabel = matchedRule is null ? "LIKE_RANDOM" : "LIKE_KEYWORD";
+        var liked = await TryRandomClickAsync(page, config.Selectors.LikeButtons, likeLabel, random);
+        if (liked)
+        {
+            await SaveActionScreenshotAsync(page, config, likeLabel, matchedRule?.Keyword);
+        }
     }
 
     var shouldComment = matchedRule is not null
@@ -124,6 +129,7 @@ static void NormalizeConfigPaths(RedditBotConfig config, string configBaseDir)
     config.ProfileDir = ResolvePath(configBaseDir, config.ProfileDir);
     config.Login.CookieFilePath = ResolvePath(configBaseDir, config.Login.CookieFilePath);
     config.Login.ExportCookieFilePath = ResolvePath(configBaseDir, config.Login.ExportCookieFilePath);
+    config.Evidence.Directory = ResolvePath(configBaseDir, config.Evidence.Directory);
 }
 
 static string ResolvePath(string configBaseDir, string path)
@@ -190,17 +196,19 @@ static async Task EnsureFeedAsync(IPage page, RedditBotConfig config)
 
 static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, RedditBotConfig config)
 {
+    var bootstrapCookies = new List<Cookie>();
+
     if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
     {
         var cookiePath = config.Login.CookieFilePath;
         if (File.Exists(cookiePath))
         {
-            var cookies = await LoadCookiesAsync(cookiePath);
-            if (cookies.Count > 0)
+            bootstrapCookies = await LoadCookiesAsync(cookiePath);
+            if (bootstrapCookies.Count > 0)
             {
                 await context.ClearCookiesAsync();
-                await context.AddCookiesAsync(cookies);
-                Console.WriteLine($"[LOGIN] Loaded cookies: {cookies.Count} from {cookiePath}");
+                await context.AddCookiesAsync(bootstrapCookies);
+                Console.WriteLine($"[LOGIN] Loaded cookies: {bootstrapCookies.Count} from {cookiePath}");
             }
         }
         else
@@ -210,13 +218,50 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
     }
 
     await GoWithRetryAsync(page, config.BaseUrl);
-    await ReportLoginStateAsync(page);
+    var loginOk = await StabilizeLoginAsync(context, page, config, bootstrapCookies);
+    if (!loginOk)
+    {
+        Console.WriteLine("[LOGIN] 连续重试后仍不稳定，请检查 cookie 是否过期，或临时开启 manual_once 手工确认一次。");
+    }
 
     if (config.Login.WaitForManualConfirm)
     {
         Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
         Console.ReadLine();
     }
+}
+
+static async Task<bool> StabilizeLoginAsync(
+    IBrowserContext context,
+    IPage page,
+    RedditBotConfig config,
+    List<Cookie> bootstrapCookies)
+{
+    const int maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        await WaitForSafeDomAsync(page);
+        var loggedIn = await ReportLoginStateAsync(page);
+        if (loggedIn)
+        {
+            return true;
+        }
+
+        if (bootstrapCookies.Count > 0)
+        {
+            await context.ClearCookiesAsync();
+            await context.AddCookiesAsync(bootstrapCookies);
+        }
+
+        if (attempt < maxAttempts)
+        {
+            Console.WriteLine($"[LOGIN] retry login bootstrap {attempt}/{maxAttempts}");
+            await page.WaitForTimeoutAsync(1000 * attempt);
+            await GoWithRetryAsync(page, config.BaseUrl, 2);
+        }
+    }
+
+    return false;
 }
 
 static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
@@ -236,7 +281,7 @@ static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
     }
 }
 
-static async Task ReportLoginStateAsync(IPage page)
+static async Task<bool> ReportLoginStateAsync(IPage page)
 {
     var url = page.Url;
     var loginIndicators = new[]
@@ -249,8 +294,7 @@ static async Task ReportLoginStateAsync(IPage page)
     var hasLoginUi = false;
     foreach (var selector in loginIndicators)
     {
-        var loc = page.Locator(selector);
-        if (await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync())
+        if (await IsSelectorVisibleSafeAsync(page, selector))
         {
             hasLoginUi = true;
             break;
@@ -261,11 +305,42 @@ static async Task ReportLoginStateAsync(IPage page)
     {
         Console.WriteLine($"[LOGIN] 未检测到登录态，当前页面可能仍需登录。url={url}");
         Console.WriteLine("[LOGIN] 请检查 cookie 是否过期，或是否缺少关键 cookie（例如 reddit_session、csrf_token）。");
+        return false;
     }
-    else
+
+    Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
+    return true;
+}
+
+static async Task WaitForSafeDomAsync(IPage page)
+{
+    try
     {
-        Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
+        await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded, new PageWaitForLoadStateOptions { Timeout = 10000 });
     }
+    catch (PlaywrightException ex)
+    {
+        Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
+    }
+}
+
+static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
+{
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
+    }
+
+    return false;
 }
 
 static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
@@ -353,6 +428,49 @@ static async Task SaveCookiesAsync(IBrowserContext context, string path)
     Console.WriteLine($"[LOGIN] Cookies exported: {path}");
 }
 
+static async Task SaveActionScreenshotAsync(IPage page, RedditBotConfig config, string action, string? keyword = null)
+{
+    if (!config.Evidence.Enabled)
+    {
+        return;
+    }
+
+    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
+        ? config.Evidence.CaptureOnLike
+        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
+
+    if (!shouldCapture)
+    {
+        return;
+    }
+
+    try
+    {
+        Directory.CreateDirectory(config.Evidence.Directory);
+        var safeKeyword = string.IsNullOrWhiteSpace(keyword) ? "none" : SanitizeFileName(keyword);
+        var fileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}_{action}_{safeKeyword}.png";
+        var filePath = Path.Combine(config.Evidence.Directory, fileName);
+
+        await page.ScreenshotAsync(new PageScreenshotOptions
+        {
+            Path = filePath,
+            FullPage = false
+        });
+
+        Console.WriteLine($"[EVIDENCE] screenshot saved: {filePath}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[EVIDENCE] screenshot failed: {ex.Message}");
+    }
+}
+
+static string SanitizeFileName(string value)
+{
+    var invalidChars = Path.GetInvalidFileNameChars();
+    return string.Concat(value.Select(c => invalidChars.Contains(c) ? '_' : c));
+}
+
 static async Task<string> ReadPostTextAsync(IPage page, List<string> textSelectors)
 {
     foreach (var selector in textSelectors)
@@ -426,6 +544,7 @@ static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random ran
                 if (!await submit.IsVisibleAsync()) continue;
                 await submit.ClickAsync();
                 Console.WriteLine("[COMMENT] submitted.");
+                await SaveActionScreenshotAsync(page, config, "COMMENT_SUBMIT", matchedRule?.Keyword);
                 return;
             }
         }
@@ -479,6 +598,7 @@ public class RedditBotConfig
     public IsolationOptions Isolation { get; set; } = new();
     public LoginOptions Login { get; set; } = new();
     public ScrollOptions Scroll { get; set; } = new();
+    public EvidenceOptions Evidence { get; set; } = new();
     public RedditSelectors Selectors { get; set; } = new();
     public List<KeywordRule> KeywordRules { get; set; } =
     [
@@ -531,6 +651,14 @@ public class ScrollOptions
     public int MaxDeltaY { get; set; } = 1200;
     public int MinPauseMs { get; set; } = 100;
     public int MaxPauseMs { get; set; } = 400;
+}
+
+public class EvidenceOptions
+{
+    public bool Enabled { get; set; } = true;
+    public bool CaptureOnLike { get; set; } = true;
+    public bool CaptureOnComment { get; set; } = true;
+    public string Directory { get; set; } = "./artifacts/reddit";
 }
 
 public class RedditSelectors

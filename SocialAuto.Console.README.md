@@ -20,6 +20,7 @@
 - 互动策略：命中关键词高概率点赞/评论，未命中低概率随机点赞/评论
 - 等待时间：`4~9` 秒（更快观察效果）
 - 运行时长：`30` 分钟
+- 证据截图：点赞和评论提交后自动截图，方便排查
 - 默认入口：
   - Reddit：`https://www.reddit.com/search/?q=中国瓷器`
   - Instagram：`https://www.instagram.com/explore/tags/chineseporcelain/`
@@ -28,6 +29,10 @@
 - `keywordLikeProbability` 调到 `0.9`
 - `keywordCommentProbability` 调到 `0.3`
 - `openRandomPostProbability` 调到 `0.65`
+
+截图目录默认值：
+- Reddit: `./artifacts/reddit`
+- Instagram: `./artifacts/instagram`
 
 ## 运行前准备
 
