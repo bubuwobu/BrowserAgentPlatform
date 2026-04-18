@@ -39,10 +39,9 @@ while (DateTime.UtcNow < endAt)
     await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
     await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
 
-    var openedPost = false;
     if (ShouldAct(config.OpenRandomPostProbability, random))
     {
-        openedPost = await TryRandomClickAsync(page, config.Selectors.PostEntryLinks, "OPEN_POST", random);
+        var openedPost = await TryRandomClickAsync(page, config.Selectors.PostEntryLinks, "OPEN_POST", random);
         if (openedPost)
         {
             await page.WaitForTimeoutAsync(random.Next(1000, 2200));
@@ -86,10 +85,6 @@ while (DateTime.UtcNow < endAt)
     Console.WriteLine($"[CYCLE {cycle}] wait={waitMs}ms");
     await page.WaitForTimeoutAsync(waitMs);
 
-    if (openedPost && ShouldAct(0.65, random))
-    {
-        await EnsureFeedAsync(page, config);
-    }
 }
 
 Console.WriteLine("[DONE] Reddit bot completed.");
@@ -699,20 +694,6 @@ static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 
 static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
-    if (!config.Evidence.Enabled)
-    {
-        return;
-    }
-
-    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
-        ? config.Evidence.CaptureOnLike
-        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
-
-    if (!shouldCapture)
-    {
-        return;
-    }
-
     try
     {
         if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))

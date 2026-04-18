@@ -39,10 +39,9 @@ while (DateTime.UtcNow < endAt)
     await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
     await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
 
-    var openedPost = false;
     if (ShouldAct(config.OpenRandomPostProbability, random))
     {
-        openedPost = await TryRandomClickAsync(page, config.Selectors.PostEntryButtons, "OPEN_POST", random);
+        var openedPost = await TryRandomClickAsync(page, config.Selectors.PostEntryButtons, "OPEN_POST", random);
         if (openedPost)
         {
             await page.WaitForTimeoutAsync(random.Next(1000, 2200));
@@ -86,10 +85,6 @@ while (DateTime.UtcNow < endAt)
     Console.WriteLine($"[CYCLE {cycle}] wait={waitMs}ms");
     await page.WaitForTimeoutAsync(waitMs);
 
-    if (openedPost && ShouldAct(0.65, random))
-    {
-        await EnsureFeedAsync(page, config);
-    }
 }
 
 Console.WriteLine("[DONE] Instagram bot completed.");
@@ -531,44 +526,6 @@ static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
     return false;
 }
 
-static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
-{
-    for (var attempt = 1; attempt <= 2; attempt++)
-    {
-        try
-        {
-            var loc = page.Locator(selector);
-            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
-            await page.WaitForTimeoutAsync(300 * attempt);
-        }
-    }
-
-    return false;
-}
-
-static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
-{
-    for (var attempt = 1; attempt <= 2; attempt++)
-    {
-        try
-        {
-            var loc = page.Locator(selector);
-            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
-            await page.WaitForTimeoutAsync(300 * attempt);
-        }
-    }
-
-    return false;
-}
-
 static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
 {
     var text = await File.ReadAllTextAsync(cookiePath);
@@ -720,20 +677,6 @@ static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 
 static async Task TryCommentAsync(IPage page, InstagramBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
-    if (!config.Evidence.Enabled)
-    {
-        return;
-    }
-
-    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
-        ? config.Evidence.CaptureOnLike
-        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
-
-    if (!shouldCapture)
-    {
-        return;
-    }
-
     try
     {
         if (!page.Url.Contains("/p/", StringComparison.OrdinalIgnoreCase))
