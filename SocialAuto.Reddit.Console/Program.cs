@@ -80,6 +80,8 @@ while (DateTime.UtcNow < endAt)
         await TryCommentAsync(page, config, random, matchedRule, postText);
     }
 
+    await TryReturnToFeedAsync(page, config);
+
     var waitMs = random.Next(config.MinWaitMs, config.MaxWaitMs + 1);
     Console.WriteLine($"[CYCLE {cycle}] wait={waitMs}ms");
     await page.WaitForTimeoutAsync(waitMs);
@@ -178,44 +180,112 @@ static async Task<bool> TryRandomClickAsync(IPage page, List<string> selectors, 
 
 static async Task<bool> TryLikeAsync(IPage page, RedditBotConfig config, Random random, string label)
 {
-    await EnsurePostOpenedForLikeAsync(page, config, random);
-
-    foreach (var selector in config.Selectors.LikeButtons)
+    for (var attempt = 1; attempt <= config.MaxLikeAttempts; attempt++)
     {
-        try
+        await EnsurePostOpenedForLikeAsync(page, config, random);
+
+        foreach (var selector in config.Selectors.LikeButtons)
         {
-            var locator = page.Locator(selector);
-            var count = await locator.CountAsync();
-            if (count == 0) continue;
-
-            for (var i = 0; i < count; i++)
+            try
             {
-                var target = locator.Nth(i);
-                if (!await target.IsVisibleAsync()) continue;
+                var locator = page.Locator(selector);
+                var count = await locator.CountAsync();
+                if (count == 0) continue;
 
-                try
+                for (var i = 0; i < count; i++)
                 {
-                    await target.ScrollIntoViewIfNeededAsync();
-                    await page.WaitForTimeoutAsync(random.Next(100, 250));
-                    await target.ClickAsync(new LocatorClickOptions { Delay = random.Next(40, 120), Timeout = 5000 });
-                    Console.WriteLine($"[{label}] clicked selector={selector}, index={i}");
-                    return true;
-                }
-                catch
-                {
-                    await target.ClickAsync(new LocatorClickOptions { Force = true, Timeout = 5000 });
-                    Console.WriteLine($"[{label}] force-clicked selector={selector}, index={i}");
-                    return true;
+                    var target = locator.Nth(i);
+                    if (!await target.IsVisibleAsync()) continue;
+                    if (await IsAlreadyUpvotedAsync(target))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await target.ScrollIntoViewIfNeededAsync();
+                        await page.WaitForTimeoutAsync(random.Next(100, 250));
+                        await target.ClickAsync(new LocatorClickOptions { Delay = random.Next(40, 120), Timeout = 5000 });
+                        var confirmed = await ConfirmLikeStateAsync(page, target, config.Selectors.LikedStateIndicators);
+                        if (confirmed)
+                        {
+                            Console.WriteLine($"[{label}] clicked selector={selector}, index={i}, confirmed=true");
+                            return true;
+                        }
+                    }
+                    catch
+                    {
+                        await target.ClickAsync(new LocatorClickOptions { Force = true, Timeout = 5000 });
+                        var confirmed = await ConfirmLikeStateAsync(page, target, config.Selectors.LikedStateIndicators);
+                        if (confirmed)
+                        {
+                            Console.WriteLine($"[{label}] force-clicked selector={selector}, index={i}, confirmed=true");
+                            return true;
+                        }
+                    }
+
+                    Console.WriteLine($"[{label}] clicked selector={selector}, index={i}, but not confirmed.");
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[{label}] selector failed: {selector}, err={ex.Message}");
+            }
         }
-        catch (Exception ex)
+
+        if (attempt < config.MaxLikeAttempts)
         {
-            Console.WriteLine($"[{label}] selector failed: {selector}, err={ex.Message}");
+            Console.WriteLine($"[{label}] retry like attempt {attempt}/{config.MaxLikeAttempts}");
+            await page.WaitForTimeoutAsync(500 * attempt);
         }
     }
 
     Console.WriteLine($"[{label}] no like target clicked.");
+    return false;
+}
+
+static async Task<bool> ConfirmLikeStateAsync(IPage page, ILocator clickedButton, List<string> likedStateSelectors)
+{
+    await page.WaitForTimeoutAsync(350);
+    if (await IsAlreadyUpvotedAsync(clickedButton))
+    {
+        return true;
+    }
+
+    foreach (var selector in likedStateSelectors)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            if (await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync())
+            {
+                return true;
+            }
+        }
+        catch
+        {
+            // ignore selector-level failures
+        }
+    }
+
+    return false;
+}
+
+static async Task<bool> IsAlreadyUpvotedAsync(ILocator button)
+{
+    try
+    {
+        var pressed = await button.GetAttributeAsync("aria-pressed");
+        if (string.Equals(pressed, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+    }
+    catch
+    {
+        // ignore
+    }
+
     return false;
 }
 
@@ -233,8 +303,13 @@ static async Task EnsurePostOpenedForLikeAsync(IPage page, RedditBotConfig confi
     }
 }
 
-static async Task EnsureFeedAsync(IPage page, RedditBotConfig config)
+static async Task TryReturnToFeedAsync(IPage page, RedditBotConfig config)
 {
+    if (!config.ReturnToFeedAfterAction)
+    {
+        return;
+    }
+
     try
     {
         if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
@@ -242,12 +317,12 @@ static async Task EnsureFeedAsync(IPage page, RedditBotConfig config)
             return;
         }
 
-        await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 45000 });
-        Console.WriteLine("[NAV] returned to feed page.");
+        await page.GoBackAsync(new PageGoBackOptions { WaitUntil = WaitUntilState.Commit, Timeout = 15000 });
+        Console.WriteLine("[NAV] returned to feed by browser back.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[NAV] failed to return feed: {ex.Message}");
+        Console.WriteLine($"[NAV] return-to-feed skipped: {ex.Message}");
     }
 }
 
@@ -257,7 +332,7 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
 
     if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
     {
-        var cookiePath = ResolveCookiePathWithFallback(config.Login.CookieFilePath);
+        var cookiePath = ResolveCookiePathWithFallback(config);
         if (File.Exists(cookiePath))
         {
             bootstrapCookies = await LoadCookiesAsync(cookiePath);
@@ -291,6 +366,10 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
     {
         Console.WriteLine("[LOGIN] 连续重试后仍不稳定，请检查 cookie 是否过期，或临时开启 manual_once 手工确认一次。");
     }
+    else
+    {
+        await PersistCookiesForNextRunAsync(context, config);
+    }
 
     if (config.Login.WaitForManualConfirm)
     {
@@ -299,18 +378,15 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
     }
 }
 
-static string ResolveCookiePathWithFallback(string cookiePath)
+static string ResolveCookiePathWithFallback(RedditBotConfig config)
 {
-    if (File.Exists(cookiePath))
-    {
-        return cookiePath;
-    }
-
-    var fileName = Path.GetFileName(cookiePath);
     var fallbackCandidates = new[]
     {
-        Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", fileName),
-        Path.Combine(Directory.GetCurrentDirectory(), fileName)
+        config.Login.CookieFilePath,
+        config.Login.ExportCookieFilePath,
+        Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", "default.cookies.json"),
+        Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", "profiles", "reddit", "cookies.json"),
+        Path.Combine(Directory.GetCurrentDirectory(), "default.cookies.json")
     };
 
     foreach (var candidate in fallbackCandidates)
@@ -322,7 +398,16 @@ static string ResolveCookiePathWithFallback(string cookiePath)
         }
     }
 
-    return cookiePath;
+    return config.Login.CookieFilePath;
+}
+
+static async Task PersistCookiesForNextRunAsync(IBrowserContext context, RedditBotConfig config)
+{
+    await SaveCookiesAsync(context, config.Login.ExportCookieFilePath);
+    if (!string.Equals(config.Login.ExportCookieFilePath, config.Login.CookieFilePath, StringComparison.OrdinalIgnoreCase))
+    {
+        await SaveCookiesAsync(context, config.Login.CookieFilePath);
+    }
 }
 
 static async Task<bool> StabilizeLoginAsync(
@@ -614,6 +699,20 @@ static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 
 static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
+    if (!config.Evidence.Enabled)
+    {
+        return;
+    }
+
+    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
+        ? config.Evidence.CaptureOnLike
+        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
+
+    if (!shouldCapture)
+    {
+        return;
+    }
+
     try
     {
         if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
@@ -695,6 +794,8 @@ public class RedditBotConfig
     public double CommentProbability { get; set; } = 0.01;
     public double KeywordCommentProbability { get; set; } = 0.25;
     public double OpenRandomPostProbability { get; set; } = 0.55;
+    public int MaxLikeAttempts { get; set; } = 3;
+    public bool ReturnToFeedAfterAction { get; set; } = true;
     public int MinWaitMs { get; set; } = 4000;
     public int MaxWaitMs { get; set; } = 9000;
     public IsolationOptions Isolation { get; set; } = new();
@@ -774,6 +875,13 @@ public class RedditSelectors
         "shreddit-post button[aria-label*='upvote' i]",
         "button[aria-label*='upvote' i]",
         "button[aria-label*='like' i]"
+    ];
+
+    public List<string> LikedStateIndicators { get; set; } =
+    [
+        "button[aria-label*='upvoted' i]",
+        "button[aria-pressed='true'][aria-label*='upvote' i]",
+        "button[id*='upvote-button'][aria-pressed='true']"
     ];
 
     public List<string> PostEntryLinks { get; set; } =
