@@ -3,7 +3,8 @@
     {
       "name": "reddit_session",
       "value": "eyJhbGciOiJSUzI1NiIsImtpZCI6IlNIQTI1NjpsVFdYNlFVUEloWktaRG1rR0pVd1gvdWNFK01BSjBYRE12RU1kNzVxTXQ4IiwidHlwIjoiSldUIn0.eyJzdWIiOiJ0Ml8yYzVoeDFvNnM5IiwiZXhwIjoxNzkxNjE5MTU5LjM4OTMyNiwiaWF0IjoxNzc1OTgwNzU5LjM4OTMyNiwianRpIjoic3AtbnRKcnRRcWFKN2xNTlJRemtTN3lqVk0zRF9RIiwiYXQiOjEsImNpZCI6ImNvb2tpZSIsImxjYSI6MTc3NTk4MDcxOTQ5MSwic2NwIjoiZUp5S2pnVUVBQURfX3dFVkFMayIsImZsbyI6NywiYW1yIjpbInNzbyJdfQ.jYC22UbJX9KldfopTB_NJh_HuHr8lMpdkd3_pMP8zuKuUWaVk-g7h1bZrwrw03LQUxhIMcoLQCrSlfboFb4wWL6nAOPPuSCQoeIwd0_ThNXTkk7lHFZ6KoRFfzRhdgBWWytolFfTbvKuQPP1pK280ecAX_HL_QTqU8nQpr_XNLTa3-kyaTnFsN5pK3FhZk2hneJL_gg8HOH9I8Yf0G7c7hh_kvLVMoB_YxIQ12JFhyedWjpXSfdWkMGdKmCJnZ3xUpqUz6U2j6AS3YZZJJ6wd4GmC0S-eWU1TUr2Dy7BOu5wNdfstZbqkUM5sAfZ4_o3ZII6fyO9hknTTmlrs4TLjQ",
-      "url": "https://www.reddit.com",
+      "domain": ".reddit.com",
+      "path": "/",
       "httpOnly": true,
       "secure": true,
       "sameSite": "Lax"

@@ -140,6 +140,7 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
             var cookies = await LoadCookiesAsync(cookiePath);
             if (cookies.Count > 0)
             {
+                await context.ClearCookiesAsync();
                 await context.AddCookiesAsync(cookies);
                 Console.WriteLine($"[LOGIN] Loaded cookies: {cookies.Count} from {cookiePath}");
             }
@@ -227,10 +228,36 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
             cookie.Url = "https://www.reddit.com";
         }
 
+        NormalizeRedditCookie(cookie);
+
         result.Add(cookie);
     }
 
     return result;
+}
+
+static void NormalizeRedditCookie(Cookie cookie)
+{
+    // reddit sometimes jumps between reddit.com / www.reddit.com.
+    // Host-only cookies bound to www may not be sent to apex domain.
+    if (!string.IsNullOrWhiteSpace(cookie.Domain))
+    {
+        return;
+    }
+
+    if (!Uri.TryCreate(cookie.Url, UriKind.Absolute, out var uri))
+    {
+        return;
+    }
+
+    if (!uri.Host.EndsWith("reddit.com", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    cookie.Domain = ".reddit.com";
+    cookie.Path = string.IsNullOrWhiteSpace(cookie.Path) ? "/" : cookie.Path;
+    cookie.Url = null;
 }
 
 static SameSiteAttribute? ParseSameSite(string? raw)

@@ -140,6 +140,7 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Insta
             var cookies = await LoadCookiesAsync(cookiePath);
             if (cookies.Count > 0)
             {
+                await context.ClearCookiesAsync();
                 await context.AddCookiesAsync(cookies);
                 Console.WriteLine($"[LOGIN] Loaded cookies: {cookies.Count} from {cookiePath}");
             }
