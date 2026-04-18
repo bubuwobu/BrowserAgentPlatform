@@ -1,7 +1,8 @@
 using System.Text.Json;
 using Microsoft.Playwright;
 
-var config = await LoadConfigAsync(args);
+var (config, configBaseDir) = await LoadConfigAsync(args);
+NormalizeConfigPaths(config, configBaseDir);
 
 var random = new Random();
 var endAt = DateTime.UtcNow.AddMinutes(config.RunMinutes);
@@ -55,7 +56,7 @@ if (config.Login.ExportCookiesOnExit)
     await SaveCookiesAsync(context, config.Login.ExportCookieFilePath);
 }
 
-static async Task<RedditBotConfig> LoadConfigAsync(string[] args)
+static async Task<(RedditBotConfig Config, string ConfigBaseDir)> LoadConfigAsync(string[] args)
 {
     var candidates = new List<string>();
     if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
@@ -71,14 +72,29 @@ static async Task<RedditBotConfig> LoadConfigAsync(string[] args)
     if (string.IsNullOrWhiteSpace(configPath))
     {
         Console.WriteLine("[WARN] appsettings.json not found, using built-in defaults.");
-        return new RedditBotConfig();
+        return (new RedditBotConfig(), Directory.GetCurrentDirectory());
     }
 
     Console.WriteLine($"[BOOT] Using config: {configPath}");
-    return JsonSerializer.Deserialize<RedditBotConfig>(
-               await File.ReadAllTextAsync(configPath),
-               new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-           ) ?? new RedditBotConfig();
+    var config = JsonSerializer.Deserialize<RedditBotConfig>(
+                     await File.ReadAllTextAsync(configPath),
+                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                 ) ?? new RedditBotConfig();
+
+    return (config, Path.GetDirectoryName(configPath) ?? Directory.GetCurrentDirectory());
+}
+
+static void NormalizeConfigPaths(RedditBotConfig config, string configBaseDir)
+{
+    config.ProfileDir = ResolvePath(configBaseDir, config.ProfileDir);
+    config.Login.CookieFilePath = ResolvePath(configBaseDir, config.Login.CookieFilePath);
+    config.Login.ExportCookieFilePath = ResolvePath(configBaseDir, config.Login.ExportCookieFilePath);
+}
+
+static string ResolvePath(string configBaseDir, string path)
+{
+    if (string.IsNullOrWhiteSpace(path)) return path;
+    return Path.IsPathRooted(path) ? path : Path.GetFullPath(Path.Combine(configBaseDir, path));
 }
 
 static bool ShouldAct(double probability, Random random)
@@ -135,11 +151,44 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Reddi
     }
 
     await page.GotoAsync(config.BaseUrl, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 60000 });
+    await ReportLoginStateAsync(page);
 
     if (config.Login.WaitForManualConfirm)
     {
         Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
         Console.ReadLine();
+    }
+}
+
+static async Task ReportLoginStateAsync(IPage page)
+{
+    var url = page.Url;
+    var loginIndicators = new[]
+    {
+        "a[href*='/login']",
+        "input[name='username']",
+        "button[type='submit']"
+    };
+
+    var hasLoginUi = false;
+    foreach (var selector in loginIndicators)
+    {
+        var loc = page.Locator(selector);
+        if (await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync())
+        {
+            hasLoginUi = true;
+            break;
+        }
+    }
+
+    if (url.Contains("/login", StringComparison.OrdinalIgnoreCase) || hasLoginUi)
+    {
+        Console.WriteLine($"[LOGIN] 未检测到登录态，当前页面可能仍需登录。url={url}");
+        Console.WriteLine("[LOGIN] 请检查 cookie 是否过期，或是否缺少关键 cookie（例如 reddit_session、csrf_token）。");
+    }
+    else
+    {
+        Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
     }
 }
 
