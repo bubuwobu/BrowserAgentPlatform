@@ -11,6 +11,12 @@ Console.WriteLine($"[BOOT] Reddit bot start. RunMinutes={config.RunMinutes}, Bas
 Console.WriteLine($"[BOOT] mode: keyword-first; openPostProb={config.OpenRandomPostProbability}, randomLikeProb={config.LikeProbability}, keywordLikeProb={config.KeywordLikeProbability}");
 
 using var playwright = await Playwright.CreateAsync();
+if (args.Any(a => string.Equals(a, "--import-browser", StringComparison.OrdinalIgnoreCase)))
+{
+    await ImportFromRunningChromeAsync(config);
+    Console.WriteLine("[BOOT] 已从运行中的 Chrome 导入登录态，程序结束。");
+    return;
+}
 await using var context = await playwright.Chromium.LaunchPersistentContextAsync(
     config.ProfileDir,
     new BrowserTypeLaunchPersistentContextOptions
@@ -27,10 +33,15 @@ context.SetDefaultTimeout(12000);
 context.SetDefaultNavigationTimeout(45000);
 
 var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
+Console.WriteLine("[HOTKEY] 控制台命令：save=立即导出当前登录态，import-browser=从已登录 Chrome 导入，status=检查登录态，quit=退出程序");
+using var commandCts = new CancellationTokenSource();
+var commandLoopTask = StartConsoleCommandLoopAsync(context, page, config, commandCts.Token);
 var loginReady = await BootstrapLoginAsync(context, page, config);
 if (!loginReady)
 {
     Console.WriteLine("[FATAL] Login is still not ready after auto/manual recovery. Stop run to avoid invalid actions.");
+    commandCts.Cancel();
+    await StopCommandLoopAsync(commandLoopTask);
     return;
 }
 
@@ -108,8 +119,11 @@ while (DateTime.UtcNow < endAt)
 Console.WriteLine("[DONE] Reddit bot completed.");
 if (config.Login.ExportCookiesOnExit)
 {
-    await SaveCookiesAsync(context, config.Login.ExportCookieFilePath);
+    await PersistAuthStateForNextRunAsync(context, config);
 }
+
+commandCts.Cancel();
+await StopCommandLoopAsync(commandLoopTask);
 
 static async Task<(RedditBotConfig Config, string ConfigBaseDir)> LoadConfigAsync(string[] args)
 {
@@ -144,6 +158,8 @@ static void NormalizeConfigPaths(RedditBotConfig config, string configBaseDir)
     config.ProfileDir = ResolvePath(configBaseDir, config.ProfileDir);
     config.Login.CookieFilePath = ResolvePath(configBaseDir, config.Login.CookieFilePath);
     config.Login.ExportCookieFilePath = ResolvePath(configBaseDir, config.Login.ExportCookieFilePath);
+    config.Login.StorageStateFilePath = ResolvePath(configBaseDir, config.Login.StorageStateFilePath);
+    config.Login.ExportStorageStateFilePath = ResolvePath(configBaseDir, config.Login.ExportStorageStateFilePath);
     config.Evidence.Directory = ResolvePath(configBaseDir, config.Evidence.Directory);
 }
 
@@ -157,6 +173,97 @@ static bool ShouldAct(double probability, Random random)
 {
     var normalized = Math.Clamp(probability, 0, 1);
     return random.NextDouble() <= normalized;
+}
+
+static Task StartConsoleCommandLoopAsync(IBrowserContext context, IPage page, RedditBotConfig config, CancellationToken cancellationToken)
+{
+    return Task.Run(async () =>
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            string? command;
+            try
+            {
+                command = await Task.Run(Console.ReadLine, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HOTKEY] command loop stopped: {ex.Message}");
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(command))
+            {
+                continue;
+            }
+
+            var normalized = command.Trim().ToLowerInvariant();
+            if (normalized is "save" or "export" or "s")
+            {
+                try
+                {
+                    await PersistAuthStateForNextRunAsync(context, config);
+                    Console.WriteLine("[HOTKEY] 当前登录态已导出到 profiles 目录（cookies + storageState）。");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[HOTKEY] cookie 导出失败: {ex.Message}");
+                }
+            }
+            else if (normalized is "import-browser" or "attach" or "import")
+            {
+                try
+                {
+                    await ImportFromRunningChromeAsync(config);
+                    Console.WriteLine("[HOTKEY] 已从运行中的 Chrome 导入登录态到 profiles 目录。");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[HOTKEY] 导入运行中 Chrome 失败: {ex.Message}");
+                }
+            }
+            else if (normalized is "status" or "check")
+            {
+                try
+                {
+                    await ReportLoginStateAsync(page);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[HOTKEY] status 检查失败: {ex.Message}");
+                }
+            }
+            else if (normalized is "quit" or "exit" or "q")
+            {
+                Console.WriteLine("[HOTKEY] 收到退出命令，程序将在当前循环结束后退出。");
+                Environment.Exit(0);
+            }
+            else
+            {
+                Console.WriteLine($"[HOTKEY] 未识别命令: {command}. 可用命令：save | import-browser | status | quit");
+            }
+        }
+    }, cancellationToken);
+}
+
+static async Task StopCommandLoopAsync(Task commandLoopTask)
+{
+    try
+    {
+        await commandLoopTask;
+    }
+    catch (OperationCanceledException)
+    {
+        // ignore cancellation
+    }
+    catch
+    {
+        // ignore background stop failures
+    }
 }
 
 static async Task<bool> TryRandomClickAsync(IPage page, List<string> selectors, string label, Random random)
@@ -347,72 +454,51 @@ static Task EnsureFeedAsync(IPage page, RedditBotConfig config)
 
 static async Task<bool> BootstrapLoginAsync(IBrowserContext context, IPage page, RedditBotConfig config)
 {
+    var bootstrapPath = ResolveAuthStatePathWithFallback(config);
     var bootstrapCookies = new List<Cookie>();
 
-    if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
+    if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase) && File.Exists(bootstrapPath))
     {
-        var cookiePath = ResolveCookiePathWithFallback(config);
-        if (File.Exists(cookiePath))
+        bootstrapCookies = await LoadCookiesAsync(bootstrapPath);
+        bootstrapCookies = FilterValidCookies(bootstrapCookies);
+        if (ValidateBootstrapCookies(bootstrapCookies))
         {
-            bootstrapCookies = await LoadCookiesAsync(cookiePath);
-            bootstrapCookies = FilterValidCookies(bootstrapCookies);
-            if (ValidateBootstrapCookies(bootstrapCookies))
-            {
-                await context.ClearCookiesAsync();
-                await context.AddCookiesAsync(bootstrapCookies);
-                Console.WriteLine($"[LOGIN] Loaded cookies: {bootstrapCookies.Count} from {cookiePath}");
-            }
-            else
-            {
-                Console.WriteLine("[LOGIN] Cookie bootstrap skipped: required cookies missing/invalid.");
-            }
+            await context.ClearCookiesAsync();
+            await context.AddCookiesAsync(bootstrapCookies);
+            Console.WriteLine($"[LOGIN] Loaded auth cookies: {bootstrapCookies.Count} from {bootstrapPath}");
         }
         else
         {
-            Console.WriteLine($"[LOGIN] Cookie file not found: {cookiePath}, fallback to manual page open.");
+            Console.WriteLine("[LOGIN] Bootstrap auth file exists but required cookies are missing/invalid.");
         }
+    }
+    else if (string.Equals(config.Login.Mode, "cookie_bootstrap", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine($"[LOGIN] Auth state file not found: {bootstrapPath}, fallback to manual login.");
     }
 
-    var navigated = await GoWithRetryAsync(page, config.BaseUrl);
-    if (!navigated)
-    {
-        foreach (var fallbackUrl in config.FallbackBaseUrls)
-        {
-            if (await GoWithRetryAsync(page, fallbackUrl, 2))
-            {
-                Console.WriteLine($"[NAV] fallback url succeeded: {fallbackUrl}");
-                break;
-            }
-        }
-    }
+    await GoWithRetryAsync(page, config.BaseUrl, 2);
     var loginOk = await StabilizeLoginAsync(context, page, config, bootstrapCookies);
     if (!loginOk)
     {
-        Console.WriteLine("[LOGIN] 连续重试后仍不稳定，请检查 cookie 是否过期，或临时开启 manual_once 手工确认一次。");
-        Console.WriteLine("[LOGIN] 请先手工登录（浏览器窗口），完成后按回车继续检测...");
-        Console.ReadLine();
-        await GoWithRetryAsync(page, config.BaseUrl, 2);
-        loginOk = await ReportLoginStateAsync(page);
+        Console.WriteLine("[LOGIN] 请在浏览器窗口中手工完成登录。检测到登录成功后会自动保存登录态。");
+        loginOk = await WaitForManualLoginAndAutoPersistAsync(context, page, config);
     }
 
     if (loginOk)
     {
-        await PersistCookiesForNextRunAsync(context, config);
-    }
-
-    if (config.Login.WaitForManualConfirm)
-    {
-        Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
-        Console.ReadLine();
+        await PersistAuthStateForNextRunAsync(context, config);
     }
 
     return loginOk;
 }
 
-static string ResolveCookiePathWithFallback(RedditBotConfig config)
+static string ResolveAuthStatePathWithFallback(RedditBotConfig config)
 {
     var fallbackCandidates = new[]
     {
+        config.Login.StorageStateFilePath,
+        config.Login.ExportStorageStateFilePath,
         config.Login.CookieFilePath,
         config.Login.ExportCookieFilePath,
         Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", "default.cookies.json"),
@@ -432,9 +518,16 @@ static string ResolveCookiePathWithFallback(RedditBotConfig config)
     return config.Login.CookieFilePath;
 }
 
-static async Task PersistCookiesForNextRunAsync(IBrowserContext context, RedditBotConfig config)
+static async Task PersistAuthStateForNextRunAsync(IBrowserContext context, RedditBotConfig config)
 {
+    await SaveStorageStateAsync(context, config.Login.ExportStorageStateFilePath);
     await SaveCookiesAsync(context, config.Login.ExportCookieFilePath);
+
+    if (!string.Equals(config.Login.ExportStorageStateFilePath, config.Login.StorageStateFilePath, StringComparison.OrdinalIgnoreCase))
+    {
+        await SaveStorageStateAsync(context, config.Login.StorageStateFilePath);
+    }
+
     if (!string.Equals(config.Login.ExportCookieFilePath, config.Login.CookieFilePath, StringComparison.OrdinalIgnoreCase))
     {
         await SaveCookiesAsync(context, config.Login.CookieFilePath);
@@ -526,8 +619,9 @@ static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
 
     if (verbose)
     {
-        Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
+        Console.WriteLine($"[LOGIN] 登录态已就绪。url={url}");
     }
+
     return true;
 }
 
@@ -541,25 +635,6 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
-}
-
-static async Task<bool> IsSelectorVisibleWithRetryAsync(IPage page, string selector)
-{
-    for (var attempt = 1; attempt <= 2; attempt++)
-    {
-        try
-        {
-            var loc = page.Locator(selector);
-            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
-            await page.WaitForTimeoutAsync(300 * attempt);
-        }
-    }
-
-    return false;
 }
 
 static async Task<bool> IsSelectorVisibleWithRetryAsync(IPage page, string selector)
@@ -595,20 +670,22 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
 
     foreach (var item in source.EnumerateArray())
     {
-        if (!item.TryGetProperty("name", out var nameEl) || !item.TryGetProperty("value", out var valueEl))
+        var name = ReadJsonAsString(item, "name");
+        var value = ReadJsonAsString(item, "value");
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value))
             continue;
 
         var cookie = new Cookie
         {
-            Name = nameEl.GetString() ?? "",
-            Value = valueEl.GetString() ?? "",
-            Url = item.TryGetProperty("url", out var urlEl) ? urlEl.GetString() : null,
-            Domain = item.TryGetProperty("domain", out var domainEl) ? domainEl.GetString() : null,
-            Path = item.TryGetProperty("path", out var pathEl) ? pathEl.GetString() : "/",
-            Expires = item.TryGetProperty("expires", out var expEl) && expEl.TryGetDouble(out var exp) ? (float?)exp : null,
-            HttpOnly = item.TryGetProperty("httpOnly", out var httpOnlyEl) && httpOnlyEl.GetBoolean(),
-            Secure = item.TryGetProperty("secure", out var secureEl) && secureEl.GetBoolean(),
-            SameSite = item.TryGetProperty("sameSite", out var sameSiteEl) ? ParseSameSite(sameSiteEl.GetString()) : null
+            Name = name,
+            Value = value,
+            Url = ReadJsonAsString(item, "url"),
+            Domain = ReadJsonAsString(item, "domain"),
+            Path = ReadJsonAsString(item, "path") ?? "/",
+            Expires = ReadJsonAsFloat(item, "expires"),
+            HttpOnly = ReadJsonAsBool(item, "httpOnly"),
+            Secure = ReadJsonAsBool(item, "secure"),
+            SameSite = ParseSameSite(ReadJsonAsString(item, "sameSite"))
         };
 
         if (string.IsNullOrWhiteSpace(cookie.Url) && string.IsNullOrWhiteSpace(cookie.Domain))
@@ -621,6 +698,61 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
     }
 
     return result;
+}
+
+static string? ReadJsonAsString(JsonElement parent, string propertyName)
+{
+    if (!parent.TryGetProperty(propertyName, out var el))
+    {
+        return null;
+    }
+
+    return el.ValueKind switch
+    {
+        JsonValueKind.String => el.GetString(),
+        JsonValueKind.Number => el.GetRawText(),
+        JsonValueKind.True => "true",
+        JsonValueKind.False => "false",
+        JsonValueKind.Null => null,
+        _ => el.GetRawText().Trim('"')
+    };
+}
+
+static float? ReadJsonAsFloat(JsonElement parent, string propertyName)
+{
+    if (!parent.TryGetProperty(propertyName, out var el))
+    {
+        return null;
+    }
+
+    if (el.ValueKind == JsonValueKind.Number && el.TryGetDouble(out var number))
+    {
+        return (float)number;
+    }
+
+    if (el.ValueKind == JsonValueKind.String && double.TryParse(el.GetString(), out var parsed))
+    {
+        return (float)parsed;
+    }
+
+    return null;
+}
+
+static bool ReadJsonAsBool(JsonElement parent, string propertyName)
+{
+    if (!parent.TryGetProperty(propertyName, out var el))
+    {
+        return false;
+    }
+
+    return el.ValueKind switch
+    {
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.String => bool.TryParse(el.GetString(), out var parsed) && parsed,
+        JsonValueKind.Number => el.TryGetInt32(out var number) && number != 0,
+        _ => false
+    };
 }
 
 static List<Cookie> FilterValidCookies(List<Cookie> cookies)
@@ -693,6 +825,64 @@ static SameSiteAttribute? ParseSameSite(string? raw)
         "none" => SameSiteAttribute.None,
         _ => null
     };
+}
+
+static async Task<bool> WaitForManualLoginAndAutoPersistAsync(IBrowserContext context, IPage page, RedditBotConfig config)
+{
+    var deadline = DateTime.UtcNow.AddMinutes(Math.Max(1, config.Login.ManualLoginDetectTimeoutMinutes));
+    while (DateTime.UtcNow < deadline)
+    {
+        await page.WaitForTimeoutAsync(2000);
+        await WaitForSafeDomAsync(page);
+        var loggedIn = await ReportLoginStateAsync(page, verbose: false);
+        if (loggedIn)
+        {
+            Console.WriteLine("[LOGIN] 已检测到你手工登录成功，正在自动保存登录态...");
+            await PersistAuthStateForNextRunAsync(context, config);
+            return true;
+        }
+    }
+
+    Console.WriteLine("[LOGIN] 在等待窗口内未检测到手工登录成功。");
+    return false;
+}
+
+static async Task ImportFromRunningChromeAsync(RedditBotConfig config)
+{
+    using var playwright = await Playwright.CreateAsync();
+    var browser = await playwright.Chromium.ConnectOverCDPAsync(config.Login.ImportBrowserCdpEndpoint);
+    try
+    {
+        var context = browser.Contexts.FirstOrDefault();
+        if (context is null)
+        {
+            throw new InvalidOperationException("未找到可用的浏览器上下文。请先用带远程调试端口的 Chrome 打开并登录站点。");
+        }
+
+        var page = context.Pages.FirstOrDefault();
+        if (page is not null && !string.IsNullOrWhiteSpace(config.BaseUrl))
+        {
+            await GoWithRetryAsync(page, config.BaseUrl, 2);
+        }
+
+        await PersistAuthStateForNextRunAsync(context, config);
+    }
+    catch
+    {
+
+    }
+}
+
+
+static async Task SaveStorageStateAsync(IBrowserContext context, string path)
+{
+    var dir = Path.GetDirectoryName(path);
+    if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+    await context.StorageStateAsync(new BrowserContextStorageStateOptions
+    {
+        Path = path
+    });
+    Console.WriteLine($"[LOGIN] Storage state exported: {path}");
 }
 
 static async Task SaveCookiesAsync(IBrowserContext context, string path)
@@ -793,20 +983,6 @@ static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 
 static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
-    if (!config.Evidence.Enabled)
-    {
-        return;
-    }
-
-    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
-        ? config.Evidence.CaptureOnLike
-        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
-
-    if (!shouldCapture)
-    {
-        return;
-    }
-
     try
     {
         if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
@@ -925,9 +1101,13 @@ public class LoginOptions
     // manual_once | cookie_bootstrap
     public string Mode { get; set; } = "manual_once";
     public string CookieFilePath { get; set; } = "./profiles/reddit/cookies.json";
-    public bool WaitForManualConfirm { get; set; } = true;
+    public bool WaitForManualConfirm { get; set; } = false;
+    public int ManualLoginDetectTimeoutMinutes { get; set; } = 5;
     public bool ExportCookiesOnExit { get; set; } = true;
+    public string StorageStateFilePath { get; set; } = "./profiles/reddit/storageState.json";
+    public string ExportStorageStateFilePath { get; set; } = "./profiles/reddit/storageState.json";
     public string ExportCookieFilePath { get; set; } = "./profiles/reddit/cookies.json";
+    public string ImportBrowserCdpEndpoint { get; set; } = "http://127.0.0.1:9222";
 }
 
 public class IsolationOptions

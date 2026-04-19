@@ -7,8 +7,8 @@
       "RelativeMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|solutionrelative:socialauto.reddit.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.reddit.console\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|solutionrelative:socialauto.reddit.console\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+      "AbsoluteMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.instagram.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|solutionrelative:socialauto.instagram.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.reddit.console\\default.cookies.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -19,8 +19,8 @@
       "RelativeMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|solutionrelative:socialauto.instagram.console\\default.cookies.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.instagram.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{44444444-4444-4444-4444-444444444444}|SocialAuto.Instagram.Console\\SocialAuto.Instagram.Console.csproj|solutionrelative:socialauto.instagram.console\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\socialauto.reddit.console\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{33333333-3333-3333-3333-333333333333}|SocialAuto.Reddit.Console\\SocialAuto.Reddit.Console.csproj|solutionrelative:socialauto.reddit.console\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{22222222-2222-2222-2222-222222222222}|BrowserAgentPlatform.Agent\\BrowserAgentPlatform.Agent.csproj|d:\\project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\browseragentplatform\\browseragentplatform.agent\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -100,7 +100,7 @@
               "RelativeDocumentMoniker": "SocialAuto.Instagram.Console\\default.cookies.json",
               "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\default.cookies.json",
               "RelativeToolTip": "SocialAuto.Instagram.Console\\default.cookies.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2026-04-18T05:09:31.921Z",
               "EditorCaption": ""
@@ -120,26 +120,26 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "Program.cs",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\Program.cs",
               "RelativeDocumentMoniker": "SocialAuto.Instagram.Console\\Program.cs",
               "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Instagram.Console\\Program.cs",
               "RelativeToolTip": "SocialAuto.Instagram.Console\\Program.cs",
-              "ViewState": "AgIAAMsAAAAAAAAAAAAkwOAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAKwCAAAAAAAAAAAewLYCAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-04-17T17:18:09.297Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
               "Title": "appsettings.json",
               "DocumentMoniker": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\appsettings.json",
               "RelativeDocumentMoniker": "SocialAuto.Reddit.Console\\appsettings.json",
               "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\appsettings.json",
               "RelativeToolTip": "SocialAuto.Reddit.Console\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2026-04-17T17:27:57.191Z",
               "EditorCaption": ""
@@ -152,7 +152,7 @@
               "RelativeDocumentMoniker": "SocialAuto.Reddit.Console\\Program.cs",
               "ToolTip": "D:\\Project\\\u684C\u9762app\\web\u002B\u5BA2\u6237\u7AEFagent\\v8\\BrowserAgentPlatform\\SocialAuto.Reddit.Console\\Program.cs",
               "RelativeToolTip": "SocialAuto.Reddit.Console\\Program.cs",
-              "ViewState": "AgIAAIsAAAAAAAAAAAAvwJkAAAAEAAAAAAAAAA==",
+              "ViewState": "AgIAAAwCAAAAAAAAAAAtwBECAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-04-17T17:10:39.392Z",
               "EditorCaption": ""
