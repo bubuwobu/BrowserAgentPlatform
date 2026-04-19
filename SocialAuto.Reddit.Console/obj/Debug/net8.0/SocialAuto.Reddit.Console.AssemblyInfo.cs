@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SocialAuto.Reddit.Console")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+309a4b261427159a92af5fe7f8127654c5cfe117")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4dc9fc872813f353f93f24ca4771f6eef783a55f")]
 [assembly: System.Reflection.AssemblyProductAttribute("SocialAuto.Reddit.Console")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SocialAuto.Reddit.Console")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
