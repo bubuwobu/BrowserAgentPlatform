@@ -27,12 +27,30 @@ context.SetDefaultTimeout(12000);
 context.SetDefaultNavigationTimeout(45000);
 
 var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
-await BootstrapLoginAsync(context, page, config);
+var loginReady = await BootstrapLoginAsync(context, page, config);
+if (!loginReady)
+{
+    Console.WriteLine("[FATAL] Login is still not ready after auto/manual recovery. Stop run to avoid invalid actions.");
+    return;
+}
 
 var cycle = 0;
 while (DateTime.UtcNow < endAt)
 {
     cycle++;
+    var isLoggedIn = await ReportLoginStateAsync(page, verbose: false);
+    if (!isLoggedIn)
+    {
+        Console.WriteLine($"[CYCLE {cycle}] login missing, retry bootstrap once...");
+        loginReady = await BootstrapLoginAsync(context, page, config);
+        if (!loginReady)
+        {
+            Console.WriteLine($"[CYCLE {cycle}] skip cycle due to missing login.");
+            await page.WaitForTimeoutAsync(2500);
+            continue;
+        }
+    }
+
     Console.WriteLine($"[CYCLE {cycle}] url={page.Url}");
 
     await EnsureFeedAsync(page, config);
@@ -347,7 +365,7 @@ static Task EnsureFeedAsync(IPage page, InstagramBotConfig config)
     return TryReturnToFeedAsync(page, config);
 }
 
-static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, InstagramBotConfig config)
+static async Task<bool> BootstrapLoginAsync(IBrowserContext context, IPage page, InstagramBotConfig config)
 {
     var bootstrapCookies = new List<Cookie>();
 
@@ -375,8 +393,13 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Insta
     if (!loginOk)
     {
         Console.WriteLine("[LOGIN] 连续重试后仍不稳定，请检查 cookie 是否过期，或临时开启 manual_once 手工确认一次。");
+        Console.WriteLine("[LOGIN] 请先手工登录（浏览器窗口），完成后按回车继续检测...");
+        Console.ReadLine();
+        await GoWithRetryAsync(page, config.BaseUrl, 2);
+        loginOk = await ReportLoginStateAsync(page);
     }
-    else
+
+    if (loginOk)
     {
         await PersistCookiesForNextRunAsync(context, config);
     }
@@ -386,6 +409,8 @@ static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, Insta
         Console.WriteLine("[LOGIN] 请在浏览器窗口完成手工登录，然后按回车继续...");
         Console.ReadLine();
     }
+
+    return loginOk;
 }
 
 static string ResolveCookiePathWithFallback(InstagramBotConfig config)
@@ -470,7 +495,7 @@ static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
     }
 }
 
-static async Task<bool> ReportLoginStateAsync(IPage page)
+static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
 {
     var url = page.Url;
     var loginIndicators = new[]
@@ -492,12 +517,27 @@ static async Task<bool> ReportLoginStateAsync(IPage page)
 
     if (url.Contains("/accounts/login", StringComparison.OrdinalIgnoreCase) || hasLoginUi)
     {
-        Console.WriteLine($"[LOGIN] 未检测到登录态，当前页面可能仍需登录。url={url}");
-        Console.WriteLine("[LOGIN] 请检查 cookie 是否过期，或是否缺少关键 cookie（例如 sessionid、csrftoken）。");
+        if (verbose)
+        {
+            Console.WriteLine($"[LOGIN] 未检测到登录态，当前页面可能仍需登录。url={url}");
+            Console.WriteLine("[LOGIN] 请检查 cookie 是否过期，或是否缺少关键 cookie（例如 sessionid、csrftoken）。");
+        }
         return false;
     }
 
-    Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
+    if (verbose)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
+    }
     return true;
 }
 
