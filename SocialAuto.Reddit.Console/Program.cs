@@ -321,6 +321,12 @@ static async Task TryReturnToFeedAsync(IPage page, RedditBotConfig config)
     }
 }
 
+// Backward-compat shim for older branches/call sites that still reference EnsureFeedAsync.
+static Task EnsureFeedAsync(IPage page, RedditBotConfig config)
+{
+    return TryReturnToFeedAsync(page, config);
+}
+
 static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, RedditBotConfig config)
 {
     var bootstrapCookies = new List<Cookie>();
@@ -499,6 +505,25 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
+}
+
+static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
+{
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
+    }
+
+    return false;
 }
 
 static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)

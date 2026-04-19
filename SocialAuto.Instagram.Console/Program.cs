@@ -341,6 +341,12 @@ static async Task TryReturnToFeedAsync(IPage page, InstagramBotConfig config)
     }
 }
 
+// Backward-compat shim for older branches/call sites that still reference EnsureFeedAsync.
+static Task EnsureFeedAsync(IPage page, InstagramBotConfig config)
+{
+    return TryReturnToFeedAsync(page, config);
+}
+
 static async Task BootstrapLoginAsync(IBrowserContext context, IPage page, InstagramBotConfig config)
 {
     var bootstrapCookies = new List<Cookie>();
