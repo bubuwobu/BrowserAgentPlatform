@@ -17,22 +17,20 @@ if (args.Any(a => string.Equals(a, "--import-browser", StringComparison.OrdinalI
     Console.WriteLine("[BOOT] 已从运行中的 Chrome 导入登录态，程序结束。");
     return;
 }
-await using var context = await playwright.Chromium.LaunchPersistentContextAsync(
-    config.ProfileDir,
-    new BrowserTypeLaunchPersistentContextOptions
+
+await using var browser = await playwright.Chromium.LaunchAsync(
+    new BrowserTypeLaunchOptions
     {
-        Headless = config.Headless,
-        Locale = config.Isolation.Locale,
-        TimezoneId = config.Isolation.TimezoneId,
-        UserAgent = string.IsNullOrWhiteSpace(config.Isolation.UserAgent) ? null : config.Isolation.UserAgent,
-        ViewportSize = new ViewportSize { Width = config.Isolation.ViewportWidth, Height = config.Isolation.ViewportHeight }
+        Headless = config.Headless
     }
 );
 
+var contextOptions = BuildBrowserContextOptions(config);
+await using var context = await browser.NewContextAsync(contextOptions);
 context.SetDefaultTimeout(12000);
 context.SetDefaultNavigationTimeout(45000);
 
-var page = context.Pages.FirstOrDefault() ?? await context.NewPageAsync();
+var page = await context.NewPageAsync();
 Console.WriteLine("[HOTKEY] 控制台命令：save=立即导出当前登录态，import-browser=从已登录 Chrome 导入，status=检查登录态，quit=退出程序");
 using var commandCts = new CancellationTokenSource();
 var commandLoopTask = StartConsoleCommandLoopAsync(context, page, config, commandCts.Token);
@@ -174,6 +172,33 @@ static bool ShouldAct(double probability, Random random)
     var normalized = Math.Clamp(probability, 0, 1);
     return random.NextDouble() <= normalized;
 }
+static BrowserNewContextOptions BuildBrowserContextOptions(InstagramBotConfig config)
+{
+    var options = new BrowserNewContextOptions
+    {
+        Locale = config.Isolation.Locale,
+        TimezoneId = config.Isolation.TimezoneId,
+        UserAgent = string.IsNullOrWhiteSpace(config.Isolation.UserAgent) ? null : config.Isolation.UserAgent,
+        ViewportSize = new ViewportSize
+        {
+            Width = config.Isolation.ViewportWidth,
+            Height = config.Isolation.ViewportHeight
+        }
+    };
+
+    if (!string.IsNullOrWhiteSpace(config.Login.StorageStateFilePath) && File.Exists(config.Login.StorageStateFilePath))
+    {
+        options.StorageStatePath = config.Login.StorageStateFilePath;
+        Console.WriteLine($"[LOGIN] Using storage state: {config.Login.StorageStateFilePath}");
+    }
+    else
+    {
+        Console.WriteLine($"[LOGIN] Storage state not found, fallback to cookie bootstrap: {config.Login.StorageStateFilePath}");
+    }
+
+    return options;
+}
+
 
 static Task StartConsoleCommandLoopAsync(IBrowserContext context, IPage page, InstagramBotConfig config, CancellationToken cancellationToken)
 {
@@ -497,13 +522,19 @@ static async Task<bool> BootstrapLoginAsync(IBrowserContext context, IPage page,
         Console.WriteLine($"[LOGIN] Auth state file not found: {bootstrapPath}, fallback to manual login.");
     }
 
+    // First try the normal target page once. If auth is valid, we should land in an already logged-in view.
     await GoWithRetryAsync(page, config.BaseUrl);
     var loginOk = await StabilizeLoginAsync(context, page, config, bootstrapCookies);
-    if (!loginOk)
+    if (loginOk)
     {
-        Console.WriteLine("[LOGIN] 请在浏览器窗口中手工完成登录。检测到登录成功后会自动保存登录态。");
-        loginOk = await WaitForManualLoginAndAutoPersistAsync(context, page, config);
+        await PersistAuthStateForNextRunAsync(context, config);
+        return true;
     }
+
+    // Important: when login is not ready, stop all business navigation and stay on the login page.
+    Console.WriteLine("[LOGIN] Manual login mode: automation is paused and the page will not be refreshed.");
+    await NavigateToInstagramLoginAsync(page);
+    loginOk = await WaitForManualLoginAndAutoPersistAsync(context, page, config);
 
     if (loginOk)
     {
@@ -560,7 +591,7 @@ static async Task<bool> StabilizeLoginAsync(
     InstagramBotConfig config,
     List<Cookie> bootstrapCookies)
 {
-    const int maxAttempts = 3;
+    const int maxAttempts = 2;
     for (var attempt = 1; attempt <= maxAttempts; attempt++)
     {
         await WaitForSafeDomAsync(page);
@@ -570,21 +601,38 @@ static async Task<bool> StabilizeLoginAsync(
             return true;
         }
 
-        if (bootstrapCookies.Count > 0)
+        if (bootstrapCookies.Count > 0 && attempt < maxAttempts)
         {
             await context.ClearCookiesAsync();
             await context.AddCookiesAsync(bootstrapCookies);
-        }
-
-        if (attempt < maxAttempts)
-        {
             Console.WriteLine($"[LOGIN] retry login bootstrap {attempt}/{maxAttempts}");
             await page.WaitForTimeoutAsync(1000 * attempt);
-            await GoWithRetryAsync(page, config.BaseUrl, 2);
+            await GoWithRetryAsync(page, config.BaseUrl, 1);
         }
     }
 
     return false;
+}
+
+static async Task NavigateToInstagramLoginAsync(IPage page)
+{
+    if (page.Url.Contains("/accounts/login", StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    try
+    {
+        await page.GotoAsync("https://www.instagram.com/accounts/login/", new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.DOMContentLoaded,
+            Timeout = 60000
+        });
+    }
+    catch (PlaywrightException ex)
+    {
+        Console.WriteLine($"[LOGIN] navigate to login page failed: {ex.Message}");
+    }
 }
 
 static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
@@ -606,12 +654,21 @@ static async Task GoWithRetryAsync(IPage page, string url, int maxAttempts = 3)
 
 static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
 {
-    var url = page.Url;
+    var url = page.Url ?? string.Empty;
     var loginIndicators = new[]
     {
         "input[name='username']",
         "input[name='password']",
         "button[type='submit']"
+    };
+
+    var loggedInIndicators = new[]
+    {
+        "a[href='/direct/inbox/']",
+        "a[href='/explore/']",
+        "a[href='/reels/']",
+        "svg[aria-label='Home']",
+        "nav"
     };
 
     var hasLoginUi = false;
@@ -624,8 +681,27 @@ static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
         }
     }
 
+    var hasLoggedInUi = false;
+    foreach (var selector in loggedInIndicators)
+    {
+        if (await IsSelectorVisibleSafeAsync(page, selector))
+        {
+            hasLoggedInUi = true;
+            break;
+        }
+    }
+
     if (url.Contains("/accounts/login", StringComparison.OrdinalIgnoreCase) || hasLoginUi)
     {
+        if (hasLoggedInUi)
+        {
+            if (verbose)
+            {
+                Console.WriteLine($"[LOGIN] logged-in UI detected while URL still looks transitional. url={url}");
+            }
+            return true;
+        }
+
         if (verbose)
         {
             Console.WriteLine($"[LOGIN] 未检测到登录态，当前页面可能仍需登录。url={url}");
@@ -634,12 +710,39 @@ static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
         return false;
     }
 
-    if (verbose)
+    if (hasLoggedInUi)
     {
-        Console.WriteLine($"[LOGIN] 登录态已就绪。url={url}");
+        if (verbose)
+        {
+            Console.WriteLine($"[LOGIN] 登录态已就绪。url={url}");
+        }
+        return true;
     }
 
-    return true;
+    // Fallback: check key cookies as an additional hint, without forcing navigation.
+    try
+    {
+        var cookies = await page.Context.CookiesAsync(new[] { "https://www.instagram.com/" });
+        var hasSession = cookies.Any(c => string.Equals(c.Name, "sessionid", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(c.Value));
+        var hasCsrf = cookies.Any(c => string.Equals(c.Name, "csrftoken", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(c.Value));
+        if (hasSession && hasCsrf)
+        {
+            if (verbose)
+            {
+                Console.WriteLine($"[LOGIN] login cookies detected. url={url}");
+            }
+            return true;
+        }
+    }
+    catch
+    {
+    }
+
+    if (verbose)
+    {
+        Console.WriteLine($"[LOGIN] 登录态无法确认，按未登录处理。url={url}");
+    }
+    return false;
 }
 
 static async Task WaitForSafeDomAsync(IPage page)
@@ -825,11 +928,14 @@ static SameSiteAttribute? ParseSameSite(string? raw)
 
 static async Task<bool> WaitForManualLoginAndAutoPersistAsync(IBrowserContext context, IPage page, InstagramBotConfig config)
 {
+    await NavigateToInstagramLoginAsync(page);
+    Console.WriteLine("[LOGIN] Please complete Instagram login manually in the opened browser window.");
+    Console.WriteLine("[LOGIN] Automation is paused. This page will not be refreshed during manual login.");
+
     var deadline = DateTime.UtcNow.AddMinutes(Math.Max(1, config.Login.ManualLoginDetectTimeoutMinutes));
     while (DateTime.UtcNow < deadline)
     {
         await page.WaitForTimeoutAsync(2000);
-        await WaitForSafeDomAsync(page);
         var loggedIn = await ReportLoginStateAsync(page, verbose: false);
         if (loggedIn)
         {
@@ -843,6 +949,25 @@ static async Task<bool> WaitForManualLoginAndAutoPersistAsync(IBrowserContext co
     return false;
 }
 
+static async Task ImportFromRunningChromeAsync(InstagramBotConfig config)
+{
+    using var playwright = await Playwright.CreateAsync();
+    var browser = await playwright.Chromium.ConnectOverCDPAsync(config.Login.ImportBrowserCdpEndpoint);
+    var context = browser.Contexts.FirstOrDefault();
+    if (context is null)
+    {
+        throw new InvalidOperationException("未找到可用的浏览器上下文。请先用带远程调试端口的 Chrome 打开并登录站点。");
+    }
+
+    var page = context.Pages.FirstOrDefault();
+    if (page is not null && !string.IsNullOrWhiteSpace(config.BaseUrl))
+    {
+        await GoWithRetryAsync(page, config.BaseUrl);
+    }
+
+    await PersistAuthStateForNextRunAsync(context, config);
+}
+/*
 static async Task ImportFromRunningChromeAsync(InstagramBotConfig config)
 {
     using var playwright = await Playwright.CreateAsync();
@@ -864,7 +989,7 @@ static async Task ImportFromRunningChromeAsync(InstagramBotConfig config)
         await PersistAuthStateForNextRunAsync(context, config);
     }
     catch (Exception ex) { }
-}
+}*/
 
 
 static async Task SaveStorageStateAsync(IBrowserContext context, string path)
