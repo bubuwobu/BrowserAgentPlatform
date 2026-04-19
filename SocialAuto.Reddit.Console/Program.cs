@@ -53,6 +53,7 @@ while (DateTime.UtcNow < endAt)
 
     Console.WriteLine($"[CYCLE {cycle}] url={page.Url}");
 
+    await EnsureFeedAsync(page, config);
     await page.Mouse.WheelAsync(0, random.Next(config.Scroll.MinDeltaY, config.Scroll.MaxDeltaY + 1));
     await page.WaitForTimeoutAsync(random.Next(config.Scroll.MinPauseMs, config.Scroll.MaxPauseMs + 1));
 
@@ -520,7 +521,35 @@ static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
 
     if (verbose)
     {
-        Console.WriteLine($"[LOGIN] 已进入非登录页，疑似登录成功。url={url}");
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
+    }
+
+    return false;
+}
+
+static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
+{
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
     }
     return true;
 }
