@@ -158,21 +158,68 @@ static bool HasFlag(string[] args, string flag)
 static async Task<(RedditBotConfig Config, string ConfigBaseDir)> LoadConfigAsync(string[] args)
 {
     var candidates = new List<string>();
-    var configArg = args.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) && !x.StartsWith("--", StringComparison.Ordinal));
+
+    var configArg = args.FirstOrDefault(x =>
+        !string.IsNullOrWhiteSpace(x) &&
+        !x.StartsWith("--", StringComparison.Ordinal));
+
     if (!string.IsNullOrWhiteSpace(configArg))
     {
-        candidates.Add(configArg);
+        candidates.Add(Path.GetFullPath(configArg));
     }
 
-    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Reddit.Console", "appsettings.json"));
-    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
-    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
+    static string? FindProjectConfig(string startDir, string projectFolderName)
+    {
+        if (string.IsNullOrWhiteSpace(startDir) || !Directory.Exists(startDir))
+        {
+            return null;
+        }
 
-    var configPath = candidates.FirstOrDefault(File.Exists);
+        var dir = new DirectoryInfo(startDir);
+        while (dir is not null)
+        {
+            var nestedProjectConfig = Path.Combine(dir.FullName, projectFolderName, "appsettings.json");
+            if (File.Exists(nestedProjectConfig))
+            {
+                return nestedProjectConfig;
+            }
+
+            var sameDirConfig = Path.Combine(dir.FullName, "appsettings.json");
+            if (string.Equals(dir.Name, projectFolderName, StringComparison.OrdinalIgnoreCase) && File.Exists(sameDirConfig))
+            {
+                return sameDirConfig;
+            }
+
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+
+    var currentDir = Directory.GetCurrentDirectory();
+    var baseDir = AppContext.BaseDirectory;
+
+    var projectConfig =
+        FindProjectConfig(currentDir, "SocialAuto.Reddit.Console") ??
+        FindProjectConfig(baseDir, "SocialAuto.Reddit.Console");
+
+    if (!string.IsNullOrWhiteSpace(projectConfig))
+    {
+        candidates.Add(projectConfig);
+    }
+
+    candidates.Add(Path.Combine(currentDir, "appsettings.json"));
+    candidates.Add(Path.Combine(baseDir, "appsettings.json"));
+
+    var configPath = candidates
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Select(Path.GetFullPath)
+        .FirstOrDefault(File.Exists);
+
     if (string.IsNullOrWhiteSpace(configPath))
     {
         Console.WriteLine("[WARN] appsettings.json not found, using built-in defaults.");
-        return (new RedditBotConfig(), Directory.GetCurrentDirectory());
+        return (new RedditBotConfig(), currentDir);
     }
 
     Console.WriteLine($"[BOOT] Using config: {configPath}");
@@ -181,7 +228,7 @@ static async Task<(RedditBotConfig Config, string ConfigBaseDir)> LoadConfigAsyn
                      new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
                  ) ?? new RedditBotConfig();
 
-    return (config, Path.GetDirectoryName(configPath) ?? Directory.GetCurrentDirectory());
+    return (config, Path.GetDirectoryName(configPath) ?? currentDir);
 }
 
 static void NormalizeConfigPaths(RedditBotConfig config, string configBaseDir)

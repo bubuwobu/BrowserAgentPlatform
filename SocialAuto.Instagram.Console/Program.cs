@@ -126,20 +126,68 @@ await StopCommandLoopAsync(commandLoopTask);
 static async Task<(InstagramBotConfig Config, string ConfigBaseDir)> LoadConfigAsync(string[] args)
 {
     var candidates = new List<string>();
-    if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+
+    var configArg = args.FirstOrDefault(x =>
+        !string.IsNullOrWhiteSpace(x) &&
+        !x.StartsWith("--", StringComparison.Ordinal));
+
+    if (!string.IsNullOrWhiteSpace(configArg))
     {
-        candidates.Add(args[0]);
+        candidates.Add(Path.GetFullPath(configArg));
     }
 
-    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "SocialAuto.Instagram.Console", "appsettings.json"));
-    candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json"));
-    candidates.Add(Path.Combine(AppContext.BaseDirectory, "appsettings.json"));
+    static string? FindProjectConfig(string startDir, string projectFolderName)
+    {
+        if (string.IsNullOrWhiteSpace(startDir) || !Directory.Exists(startDir))
+        {
+            return null;
+        }
 
-    var configPath = candidates.FirstOrDefault(File.Exists);
+        var dir = new DirectoryInfo(startDir);
+        while (dir is not null)
+        {
+            var nestedProjectConfig = Path.Combine(dir.FullName, projectFolderName, "appsettings.json");
+            if (File.Exists(nestedProjectConfig))
+            {
+                return nestedProjectConfig;
+            }
+
+            var sameDirConfig = Path.Combine(dir.FullName, "appsettings.json");
+            if (string.Equals(dir.Name, projectFolderName, StringComparison.OrdinalIgnoreCase) && File.Exists(sameDirConfig))
+            {
+                return sameDirConfig;
+            }
+
+            dir = dir.Parent;
+        }
+
+        return null;
+    }
+
+    var currentDir = Directory.GetCurrentDirectory();
+    var baseDir = AppContext.BaseDirectory;
+
+    var projectConfig =
+        FindProjectConfig(currentDir, "SocialAuto.Instagram.Console") ??
+        FindProjectConfig(baseDir, "SocialAuto.Instagram.Console");
+
+    if (!string.IsNullOrWhiteSpace(projectConfig))
+    {
+        candidates.Add(projectConfig);
+    }
+
+    candidates.Add(Path.Combine(currentDir, "appsettings.json"));
+    candidates.Add(Path.Combine(baseDir, "appsettings.json"));
+
+    var configPath = candidates
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Select(Path.GetFullPath)
+        .FirstOrDefault(File.Exists);
+
     if (string.IsNullOrWhiteSpace(configPath))
     {
         Console.WriteLine("[WARN] appsettings.json not found, using built-in defaults.");
-        return (new InstagramBotConfig(), Directory.GetCurrentDirectory());
+        return (new InstagramBotConfig(), currentDir);
     }
 
     Console.WriteLine($"[BOOT] Using config: {configPath}");
@@ -148,7 +196,7 @@ static async Task<(InstagramBotConfig Config, string ConfigBaseDir)> LoadConfigA
                      new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
                  ) ?? new InstagramBotConfig();
 
-    return (config, Path.GetDirectoryName(configPath) ?? Directory.GetCurrentDirectory());
+    return (config, Path.GetDirectoryName(configPath) ?? currentDir);
 }
 
 static void NormalizeConfigPaths(InstagramBotConfig config, string configBaseDir)

@@ -639,17 +639,6 @@
       "partitionKey": null
     },
     {
-      "name": "qcloud_outsite_refer",
-      "value": "https://open.weixin.qq.com",
-      "domain": ".cloud.tencent.com",
-      "path": "/",
-      "expires": 1.7765893E+09,
-      "httpOnly": false,
-      "secure": true,
-      "sameSite": 2,
-      "partitionKey": null
-    },
-    {
       "name": "intl",
       "value": "1",
       "domain": ".cloud.tencent.com",
@@ -914,33 +903,11 @@
       "partitionKey": null
     },
     {
-      "name": "__Secure-1PSIDRTS",
-      "value": "sidts-CjYBWhotCUVEf_n4DJfxN4Nn7_umli4i1eTR1q24D1h4uxLA7cXF9eTPv-B2tDVE1loZkukbi7kQAA",
-      "domain": ".google.com",
-      "path": "/",
-      "expires": 1.7765894E+09,
-      "httpOnly": true,
-      "secure": true,
-      "sameSite": 1,
-      "partitionKey": null
-    },
-    {
       "name": "__Secure-3PSIDTS",
       "value": "sidts-CjYBWhotCUVEf_n4DJfxN4Nn7_umli4i1eTR1q24D1h4uxLA7cXF9eTPv-B2tDVE1loZkukbi7kQAA",
       "domain": ".google.com",
       "path": "/",
       "expires": 1.8081248E+09,
-      "httpOnly": true,
-      "secure": true,
-      "sameSite": 2,
-      "partitionKey": null
-    },
-    {
-      "name": "__Secure-3PSIDRTS",
-      "value": "sidts-CjYBWhotCUVEf_n4DJfxN4Nn7_umli4i1eTR1q24D1h4uxLA7cXF9eTPv-B2tDVE1loZkukbi7kQAA",
-      "domain": ".google.com",
-      "path": "/",
-      "expires": 1.7765894E+09,
       "httpOnly": true,
       "secure": true,
       "sameSite": 2,
@@ -1036,13 +1003,13 @@
     },
     {
       "name": "session_tracker",
-      "value": "rrfenkjgefnqfemhch.0.1776588814064.Z0FBQUFBQnA1SmdPbTVjYXdUTk9ydXUzNk1tb0o1ZWd0YTM2czBwTUdvT2ZMbWlha0w4Ull0WHlXZWZOakx2S0dQa2xwZjVrb1J1dGZSVzRWNlhzUTkxV3dCNl9HU0dva1ZPRi12ZzJwdFZnX1RnM2N6YXRZdXVEQ2tCajdtbUp4UzFqcTBaMlVVNzA",
+      "value": "rrfenkjgefnqfemhch.0.1776589609346.Z0FBQUFBQnA1SnNwLTVHV1A3Wm5NMlQ3WDU4aGZlaENBbWtESURwLWhLcjJ4cHBmZ01FX21NMENRZF9USFhlblNGT2pFTGV2QVRmbW9tWjdyUThoYW1WVDUxcFlnemJOTzR3a1UzUkxWeEhlZlBHdUdsY0FHa2JzT2xURUV5YWpYaU9FcER0SXJKMmc",
       "domain": ".reddit.com",
       "path": "/",
       "expires": -1,
       "httpOnly": false,
       "secure": true,
-      "sameSite": 1,
+      "sameSite": 2,
       "partitionKey": null
     }
   ]
