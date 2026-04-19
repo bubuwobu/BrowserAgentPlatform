@@ -863,6 +863,7 @@ static async Task ImportFromRunningChromeAsync(InstagramBotConfig config)
 
         await PersistAuthStateForNextRunAsync(context, config);
     }
+    catch (Exception ex) { }
 }
 
 
@@ -954,6 +955,7 @@ static async Task<string> ReadPostTextAsync(IPage page, List<string> textSelecto
 
     return string.Empty;
 }
+
 
 static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 {

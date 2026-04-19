@@ -1,0 +1,12 @@
+首次使用建议顺序：
+
+1）先运行：01_启动Chrome调试模式.bat
+2）在打开的调试浏览器里手工登录 Reddit 或 Instagram
+3）如果是 Reddit，运行：02_Reddit_导入登录态.bat
+4）如果是 Instagram，运行：04_Instagram_导入登录态.bat
+5）随后正式运行：
+   - Reddit：03_Reddit_正常启动.bat
+   - Instagram：05_Instagram_正常启动.bat
+
+以后日常使用通常只需要第 5 步。
+只有登录失效时，才重新执行第 3 / 4 步。
