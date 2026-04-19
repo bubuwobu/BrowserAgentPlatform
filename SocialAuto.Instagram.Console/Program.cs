@@ -375,11 +375,16 @@ static async Task<bool> BootstrapLoginAsync(IBrowserContext context, IPage page,
         if (File.Exists(cookiePath))
         {
             bootstrapCookies = await LoadCookiesAsync(cookiePath);
-            if (bootstrapCookies.Count > 0)
+            bootstrapCookies = FilterValidCookies(bootstrapCookies);
+            if (ValidateBootstrapCookies(bootstrapCookies))
             {
                 await context.ClearCookiesAsync();
                 await context.AddCookiesAsync(bootstrapCookies);
                 Console.WriteLine($"[LOGIN] Loaded cookies: {bootstrapCookies.Count} from {cookiePath}");
+            }
+            else
+            {
+                Console.WriteLine("[LOGIN] Cookie bootstrap skipped: required cookies missing/invalid.");
             }
         }
         else
@@ -611,6 +616,46 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
     }
 
     return result;
+}
+
+static List<Cookie> FilterValidCookies(List<Cookie> cookies)
+{
+    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    var filtered = cookies
+        .Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Value))
+        .Where(c => !c.Expires.HasValue || c.Expires.Value <= 0 || c.Expires.Value > now)
+        .ToList();
+
+    var dropped = cookies.Count - filtered.Count;
+    if (dropped > 0)
+    {
+        Console.WriteLine($"[LOGIN] Dropped invalid/expired cookies: {dropped}");
+    }
+
+    return filtered;
+}
+
+static bool ValidateBootstrapCookies(List<Cookie> cookies)
+{
+    if (cookies.Count == 0)
+    {
+        return false;
+    }
+
+    var names = cookies
+        .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+        .Select(c => c.Name.ToLowerInvariant())
+        .ToHashSet();
+
+    var required = new[] { "sessionid", "csrftoken" };
+    var missing = required.Where(r => !names.Contains(r)).ToList();
+    if (missing.Count > 0)
+    {
+        Console.WriteLine($"[LOGIN] Missing required IG cookies: {string.Join(", ", missing)}");
+        return false;
+    }
+
+    return true;
 }
 
 static SameSiteAttribute? ParseSameSite(string? raw)

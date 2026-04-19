@@ -355,11 +355,16 @@ static async Task<bool> BootstrapLoginAsync(IBrowserContext context, IPage page,
         if (File.Exists(cookiePath))
         {
             bootstrapCookies = await LoadCookiesAsync(cookiePath);
-            if (bootstrapCookies.Count > 0)
+            bootstrapCookies = FilterValidCookies(bootstrapCookies);
+            if (ValidateBootstrapCookies(bootstrapCookies))
             {
                 await context.ClearCookiesAsync();
                 await context.AddCookiesAsync(bootstrapCookies);
                 Console.WriteLine($"[LOGIN] Loaded cookies: {bootstrapCookies.Count} from {cookiePath}");
+            }
+            else
+            {
+                Console.WriteLine("[LOGIN] Cookie bootstrap skipped: required cookies missing/invalid.");
             }
         }
         else
@@ -521,35 +526,7 @@ static async Task<bool> ReportLoginStateAsync(IPage page, bool verbose = true)
 
     if (verbose)
     {
-        try
-        {
-            var loc = page.Locator(selector);
-            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
-            await page.WaitForTimeoutAsync(300 * attempt);
-        }
-    }
-
-    return false;
-}
-
-static async Task<bool> IsSelectorVisibleSafeAsync(IPage page, string selector)
-{
-    for (var attempt = 1; attempt <= 2; attempt++)
-    {
-        try
-        {
-            var loc = page.Locator(selector);
-            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
-        }
-        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
-            await page.WaitForTimeoutAsync(300 * attempt);
-        }
+        Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
     return true;
 }
@@ -564,6 +541,25 @@ static async Task WaitForSafeDomAsync(IPage page)
     {
         Console.WriteLine($"[NAV] wait domcontentloaded skipped: {ex.Message}");
     }
+}
+
+static async Task<bool> IsSelectorVisibleWithRetryAsync(IPage page, string selector)
+{
+    for (var attempt = 1; attempt <= 2; attempt++)
+    {
+        try
+        {
+            var loc = page.Locator(selector);
+            return await loc.CountAsync() > 0 && await loc.First.IsVisibleAsync();
+        }
+        catch (PlaywrightException ex) when (ex.Message.Contains("Execution context was destroyed", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"[NAV] execution context changed while checking selector '{selector}', retry={attempt}");
+            await page.WaitForTimeoutAsync(300 * attempt);
+        }
+    }
+
+    return false;
 }
 
 static async Task<bool> IsSelectorVisibleWithRetryAsync(IPage page, string selector)
@@ -625,6 +621,44 @@ static async Task<List<Cookie>> LoadCookiesAsync(string cookiePath)
     }
 
     return result;
+}
+
+static List<Cookie> FilterValidCookies(List<Cookie> cookies)
+{
+    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    var filtered = cookies
+        .Where(c => !string.IsNullOrWhiteSpace(c.Name) && !string.IsNullOrWhiteSpace(c.Value))
+        .Where(c => !c.Expires.HasValue || c.Expires.Value <= 0 || c.Expires.Value > now)
+        .ToList();
+
+    var dropped = cookies.Count - filtered.Count;
+    if (dropped > 0)
+    {
+        Console.WriteLine($"[LOGIN] Dropped invalid/expired cookies: {dropped}");
+    }
+
+    return filtered;
+}
+
+static bool ValidateBootstrapCookies(List<Cookie> cookies)
+{
+    if (cookies.Count == 0)
+    {
+        return false;
+    }
+
+    var names = cookies
+        .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+        .Select(c => c.Name.ToLowerInvariant())
+        .ToHashSet();
+
+    if (!names.Contains("reddit_session"))
+    {
+        Console.WriteLine("[LOGIN] Missing required Reddit cookie: reddit_session");
+        return false;
+    }
+
+    return true;
 }
 
 static void NormalizeRedditCookie(Cookie cookie)
@@ -759,6 +793,20 @@ static KeywordRule? MatchKeywordRule(string postText, List<KeywordRule> rules)
 
 static async Task TryCommentAsync(IPage page, RedditBotConfig config, Random random, KeywordRule? matchedRule, string postText)
 {
+    if (!config.Evidence.Enabled)
+    {
+        return;
+    }
+
+    var shouldCapture = action.StartsWith("LIKE", StringComparison.OrdinalIgnoreCase)
+        ? config.Evidence.CaptureOnLike
+        : action.StartsWith("COMMENT", StringComparison.OrdinalIgnoreCase) && config.Evidence.CaptureOnComment;
+
+    if (!shouldCapture)
+    {
+        return;
+    }
+
     try
     {
         if (!page.Url.Contains("/comments/", StringComparison.OrdinalIgnoreCase))
