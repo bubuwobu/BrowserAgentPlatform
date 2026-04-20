@@ -23,8 +23,8 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
 - 1 个 Agent
 - 1 个 Reddit Profile
 - 1 个 Reddit 账号
-- 3 个模板（Cookie Bootstrap / Public JSON / Auto Browse）
-- 2 个可运行任务（queued：Cookie Bootstrap + Auto Browse）
+- 4 个模板（Cookie Bootstrap / Public JSON / Auto Browse / Night Random Browse 1H）
+- 1 个默认 queued 任务（Reddit Night Random Browse 1H Task，导入后可立即执行）
 
 你只需要把模板/任务中的 `reddit_session` 替换为真实值即可。
 
@@ -34,6 +34,9 @@ mysql -u<user> -p<password> <database_name> < sql/reddit_only_full_flow_seed.sql
 # 先编辑 sql/reddit_set_session.sql 里的 @reddit_session
 mysql -u<user> -p<password> <database_name> < sql/reddit_set_session.sql
 ```
+
+> 如果你只想手工设置一次，最少只要改这一行：
+> `SET @reddit_session := '你的真实reddit_session';`
 
 
 最后做一次校验（确认任务可跑）：

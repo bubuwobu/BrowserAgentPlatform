@@ -6,6 +6,8 @@
 SET NAMES utf8mb4;
 
 -- TODO: replace this value before running.
+-- Example:
+-- SET @reddit_session := '2,abc123...';
 SET @reddit_session := 'REPLACE_ME_WITH_REAL_REDDIT_SESSION';
 
 START TRANSACTION;
@@ -41,3 +43,4 @@ COMMIT;
 -- Verify
 -- SELECT id, name FROM task_templates WHERE definition_json LIKE CONCAT('%', @reddit_session, '%');
 -- SELECT id, name, status FROM tasks WHERE payload_json LIKE CONCAT('%', @reddit_session, '%');
+-- SELECT id, name, status, schedule_type FROM tasks WHERE name = 'Reddit Night Random Browse 1H Task';
